@@ -43,6 +43,9 @@ var _beams := []               # [{ node, mat, out, along, at, phase }]
 var _ribbons := []
 var _lamp_mat: StandardMaterial3D
 var _pyros := []               # [{ flame, core, fmat, cmat, t }]
+## The graphics card's flame (a GpuFx), when Settings -> Spark showers is on:
+## the flame cannons then throw real fire and the cones stay dark.
+var gpu_fire = null
 var _nut: Node3D = null
 var _cube: Node3D = null
 var _board: Dictionary = {}
@@ -653,9 +656,21 @@ func update(dt: float, bout: Match = null) -> void:
 	for p in _pyros:
 		p.t = maxf(0.0, p.t - dt)
 		var on: bool = p.t > 0.0
-		p.flame.visible = on
-		p.core.visible = on
+		var jets: bool = gpu_fire != null and is_instance_valid(gpu_fire)
+		p.flame.visible = on and not jets
+		p.core.visible = on and not jets
 		if not on: continue
+		if jets:
+			# A jet: fire thrown straight up, hard at first and dying back.
+			var at: Vector3 = (p.flame as Node3D).position
+			at.y = _deck_bottom + 0.9
+			var push: float = minf(1.0, p.t / 0.35)
+			p.owed = p.get("owed", 0.0) + dt * 90.0
+			while p.owed >= 1.0:
+				p.owed -= 1.0
+				gpu_fire.flame(at + Vector3(randf() - 0.5, 0.0, randf() - 0.5) * 0.25, Vector3((randf() - 0.5) * 0.9, (7.0 + randf() * 5.0) * push + 1.0, (randf() - 0.5) * 0.9),
+					0.55 + randf() * 0.5, 0.35 + randf() * 0.4, 1.3)
+			continue
 		var k: float = p.t / 1.2
 		var h := 2.5 + 3.5 * sin(minf(1.0, (1.0 - k) * 4.0) * PI / 2.0) * (0.85 + 0.15 * sin(_t * 40.0))
 		for part in [[p.flame, p.fmat, 1.0, 0.7], [p.core, p.cmat, 0.7, 0.9]]:

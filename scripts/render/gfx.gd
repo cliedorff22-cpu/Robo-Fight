@@ -28,6 +28,8 @@ const SETTINGS := [
 		"help": "Volumetric haze in the hall, so the stage lights show as beams."},
 	{"id": "gfxGrade", "group": "Graphics", "label": "Broadcast colour grade", "type": "bool", "default": true},
 	{"id": "gfxDOF", "group": "Graphics", "label": "Depth of field in intros and replays", "type": "bool", "default": true},
+	{"id": "gfxParticles", "group": "Graphics", "label": "Spark showers", "type": "bool", "default": true,
+		"help": "Sparks, smoke and flame flown by the graphics card: several times as many, as streaks, with the flash of a big hit on what is round it."},
 ]
 
 ## Every setting the Settings page shows: the game's own, with these after

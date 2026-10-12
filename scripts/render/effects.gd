@@ -7,6 +7,13 @@
 ## Sparks and smoke are each one pooled multimesh of camera-facing quads, so
 ## a busy exchange costs one draw call. Sparks are deliberately bright: the
 ## bloom is what turns them from white dots into sparks.
+##
+## With Settings -> Spark showers on, the graphics card flies them instead
+## (gpu_fx.gd): the same bursts, several times thicker, as streaks, with
+## flame for what burns and the flash of a big hit on what is round it.
+##
+## The dice here are the picture's own: nothing rolled for a spark may move
+## the fight's.
 class_name Effects
 extends Node3D
 
@@ -16,6 +23,9 @@ const MAX_SMOKE := 700
 const SPRITE_M := 0.2
 const SPARKS_BY_SEVERITY := {"scratch": 0, "glance": 6, "hit": 14, "heavy": 30, "catastrophic": 55}
 # Which material a failing part sheds, so debris matches what broke.
+# How many more sparks the graphics card throws for the same hit.
+const GPU_SPARKS := 6.0
+const FLASH_BY_SEVERITY := {"hit": 1.2, "heavy": 3.0, "catastrophic": 5.5}
 const MATERIAL_FOR := {"armor": "ar500_steel", "chassis": "ar500_steel", "wheel": "rubber", "weapon": "hub", "weaponMotor": "hub",
 	"motor": "hub", "drive": "hub", "battery": "uhmw", "electronics": "uhmw"}
 
@@ -23,6 +33,7 @@ var _rng: Rng
 var _views: Dictionary          # robot id -> RobotView
 var _debris: Debris
 var _offs := []
+var _gpu: GpuFx = null          # the graphics card's sparks, smoke and flame, or null
 
 # sparks
 var _sp_mm: MultiMesh
@@ -106,10 +117,49 @@ func _pool(count: int, tex: Texture2D, additive: bool) -> MultiMesh:
 	add_child(mmi)
 	return mm
 
+## Sparks, smoke and flame on the graphics card, or the pools here (Settings).
+func apply_settings(settings: Dictionary) -> void:
+	var want := Gfx.on(settings, "gfxParticles")
+	if want == (_gpu != null): return
+	clear()
+	if want:
+		_gpu = GpuFx.new()
+		add_child(_gpu)
+	else:
+		_gpu.queue_free()
+		_gpu = null
+
+## The graphics card's effects when they are on, or null: for the venue's
+## flame cannons, which throw the same fire.
+func gpu() -> GpuFx:
+	return _gpu
+
+## The fight is frozen (the pause screen): what is in the air hangs there.
+func set_paused(paused: bool) -> void:
+	if _gpu != null: _gpu.set_paused(paused)
+
 ## Throw `count` sparks from a point, biased along a normal.
 func spark_burst(at, normal := Vector3.UP, count := 18, speed := 7.0, hot := 1.0) -> void:
 	if at == null: return
 	var p: Vector3 = at
+	if _gpu != null:
+		for i in int(ceil(count * GPU_SPARKS)):
+			# Three in five hang about the hit, fall in arcs and skip across the
+			# deck; the rest fly, and one in ten is a fast thin streaker that
+			# crosses the box.
+			var r := _rng.next()
+			var kind := 0 if r < 0.6 else (1 if r < 0.9 else 2)
+			var s: float = speed * [0.08 + _rng.next() * 0.3, 0.3 + _rng.next() * 0.6, 0.9 + _rng.next() * 0.9][kind]
+			var v := Vector3(normal.x * s + (_rng.next() - 0.5) * s * 1.15, absf(normal.y) * s * 0.4 + _rng.next() * s * 0.8,
+				normal.z * s + (_rng.next() - 0.5) * s * 1.15)
+			var heat := 0.55 + _rng.next() * 0.45
+			# Started a little way along its own flight, so a burst is a spray
+			# from its first frame and not a ball.
+			_gpu.spark(p + v * (_rng.next() * 0.02), v, Color(1.6 * hot, (0.75 + heat * 0.5) * hot, (0.2 + heat * 0.3) * hot, 1.0),
+				(0.032 + _rng.next() * 0.04) * hot * (0.7 if kind == 2 else 1.0), (0.35 + _rng.next() * 0.8) * (0.5 if kind == 2 else 1.0))
+		# The white of the strike itself, for a frame or three.
+		if count >= 12: _gpu.flame(p, Vector3.ZERO, 0.25 + count * 0.006, 0.09, 1.6 * hot)
+		return
 	for i in count:
 		var c := _sp_cursor
 		_sp_pos[c] = p
@@ -128,6 +178,11 @@ func spark_burst(at, normal := Vector3.UP, count := 18, speed := 7.0, hot := 1.0
 # (RobotView.damage_sources): grey puffs that rise, spread and thin out; a
 # battery near the end burns.
 func _emit_smoke(at: Vector3, dark := 0.3, size := 0.12, life := 2.2, rise := 0.6) -> void:
+	if _gpu != null:
+		_gpu.smoke(Vector3(at.x + (_rng.next() - 0.5) * 0.05, at.y, at.z + (_rng.next() - 0.5) * 0.05),
+			Vector3((_rng.next() - 0.5) * 0.25, rise * (0.7 + _rng.next() * 0.6), (_rng.next() - 0.5) * 0.25),
+			dark + _rng.next() * 0.12, size * (0.8 + _rng.next() * 0.4) * SPRITE_M * 2.2, (0.35 + _rng.next() * 0.3) * SPRITE_M * 2.2, life * (0.8 + _rng.next() * 0.4))
+		return
 	var i := _sm_cursor
 	_sm_pos[i] = Vector3(at.x + (_rng.next() - 0.5) * 0.05, at.y, at.z + (_rng.next() - 0.5) * 0.05)
 	_sm_vel[i] = Vector3((_rng.next() - 0.5) * 0.25, rise * (0.7 + _rng.next() * 0.6), (_rng.next() - 0.5) * 0.25)
@@ -160,6 +215,12 @@ func _on_hit(e: Dictionary) -> void:
 	var hot := 1.0 if e.kind == "weapon" else (0.9 if e.kind == "hazard" else 0.6)
 	var speed := 5.0 + minf(12.0, J.g(e, "deliveredJ", 0.0) / 1200.0)
 	spark_burst(e.at, e.get("normal", Vector3.UP), n, speed, hot)
+	if _gpu != null:
+		var glare: float = FLASH_BY_SEVERITY.get(e.severity, 0.0) * hot
+		if glare > 0.0: _gpu.flash(e.at, glare)
+		# What a heavy hit knocks loose: a breath of pale dust off the metal.
+		if Damage.SEVERITY_ORDER[e.severity] >= 3:
+			for i in 4: _gpu.smoke(e.at, Vector3((_rng.next() - 0.5) * 1.6, 0.3 + _rng.next() * 0.8, (_rng.next() - 0.5) * 1.6), 0.5, 0.12, 0.5 + _rng.next() * 0.4, 0.5 + _rng.next() * 0.5, 0.35)
 	# Dent and darken whatever got hit.
 	var view: RobotView = _views.get(e.defenderId)
 	if view == null or not is_instance_valid(view): return
@@ -175,11 +236,17 @@ func _on_failed(e: Dictionary) -> void:
 	if _debris != null and e.get("at") != null:
 		_debris.burst(e.at, normal, 6000.0, MATERIAL_FOR.get(e.get("category"), "ar500_steel"), 7 if armor else 4, 0.09 if armor else 0.06)
 	spark_burst(e.get("at"), normal, 40, 11.0, 1.2)
+	if _gpu != null and e.get("at") != null: _gpu.flash(e.at, 4.0)
 	var view: RobotView = _views.get(e.get("botId"))
 	if view != null and is_instance_valid(view): view.set_panel_condition(e.key, 0.0)
 
 ## Advance sparks and smoke. Once per rendered frame.
 func update(dt: float) -> void:
+	if _gpu != null:
+		# The card flies what is in the air; only the smoke owed is worked out here.
+		_gpu.update(dt)
+		_damage_smoke(dt)
+		return
 	var hidden := Transform3D(Basis.from_scale(Vector3.ZERO), Vector3(0, -1000, 0))
 	var drag := 1.0 - 2.2 * dt
 	for i in MAX_SPARKS:
@@ -228,6 +295,7 @@ func update(dt: float) -> void:
 
 ## Between matches.
 func clear() -> void:
+	if _gpu != null: _gpu.clear()
 	var hidden := Transform3D(Basis.from_scale(Vector3.ZERO), Vector3(0, -1000, 0))
 	for i in MAX_SPARKS:
 		_sp_life[i] = 0.0

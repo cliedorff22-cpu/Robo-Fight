@@ -205,7 +205,7 @@ func _build() -> void:
 	add_child(cam)
 	# Sparks, dents and flying parts. Driven entirely off the bus, so the
 	# logic layer has no idea it is being watched.
-	effects = Effects.new(fight.bus, views, fight.debris, fight.rng)
+	effects = Effects.new(fight.bus, views, fight.debris, Rng.new(Rng.hash_seed("%d:fx" % match_seed)))
 	add_child(effects)
 
 	# ---------------------------------------------------------- HUD, sound, commentary
@@ -291,6 +291,8 @@ func apply_settings(changed: String) -> void:
 	var s := Game.settings
 	Stage.apply_viewport(get_viewport(), s)
 	stage.apply_settings(s)
+	effects.apply_settings(s)
+	if venue_view != null: venue_view.set("gpu_fire", effects.gpu())
 	hud.set_show_damage(J.truthy(s.get("hudDamage", true)))
 	audio.apply_settings(s)
 	speech.set_volume(float(s.get("volume", 0.75)) if J.truthy(s.get("sound", true)) else 0.0)
@@ -610,6 +612,7 @@ func _process(dt: float) -> void:
 	var still := fight.frozen and not fight.replay.playing
 	arena_view.update(0.0 if still else dt)
 	if venue_view != null: venue_view.call("update", 0.0 if still else dt, bout)
+	effects.set_paused(still)
 	if not still: effects.update(dt)
 	cam.update(dt, focus, fight.replay.playing, pair)
 	# The lens: soft backgrounds for the intro and the replays, sharp for the fight.

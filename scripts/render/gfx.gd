@@ -36,6 +36,8 @@ const SETTINGS := [
 		"help": "The fight leaves its marks on the floor: gouges that glow for a second, soot, tyre rubber, and oil from what breaks."},
 	{"id": "gfxWear", "group": "Graphics", "label": "Battle damage on the paint", "type": "bool", "default": true,
 		"help": "A damaged panel's paint chips back to bare steel and soots up, is scraped bright where it was hit, and the scrape glows for a second."},
+	{"id": "gfxTextures", "group": "Graphics", "label": "Scanned surfaces", "type": "bool", "default": true,
+		"help": "Steel, rubber, plastic and concrete photographed from the real thing, in place of the drawn textures: the deck's scuffed plate, brushed weapon steel, tyre rubber."},
 	{"id": "gfxBlur", "group": "Graphics", "label": "Spinner blur", "type": "bool", "default": true,
 		"help": "A weapon at speed is drawn as the blur a camera sees - solid where it fills the turn, see-through where the blades sweep - instead of a bar turning slowly."},
 ]

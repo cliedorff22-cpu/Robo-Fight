@@ -179,7 +179,11 @@ func _build() -> void:
 	for p in world.pieces:
 		if p.kind == "floor":
 			var deck := _plate(Rect2(-_half_x, -_half_z, _half_x * 2.0, _half_z * 2.0), holes, 0.0)
-			var mi := deck.instance(mats.lib.steelFloor, false)
+			var mi := MeshInstance3D.new()
+			var deck_mesh := ArrayMesh.new()
+			deck.add_to(deck_mesh, mats.lib.steelFloor, true)
+			mi.mesh = deck_mesh
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			add_child(mi)
 			continue
 		# Mapped once across each panel, not tiled by the metre.

@@ -148,7 +148,7 @@ func to_mesh(material: Material = null) -> ArrayMesh:
 
 ## Add this geometry to `mesh` as one more surface. Tangents (which normal
 ## maps need) are worked out from the UVs, a triangle at a time.
-func add_to(mesh: ArrayMesh, material: Material = null) -> void:
+func add_to(mesh: ArrayMesh, material: Material = null, uv2 := false) -> void:
 	if pos.is_empty(): return
 	var n := pos.size()
 	var p := PackedVector3Array()
@@ -187,6 +187,9 @@ func add_to(mesh: ArrayMesh, material: Material = null) -> void:
 	arrays[Mesh.ARRAY_NORMAL] = nn
 	arrays[Mesh.ARRAY_TEX_UV] = u
 	arrays[Mesh.ARRAY_TANGENT] = tg
+	# A second UV set, the same as the first: a material's detail layer can
+	# then repeat at its own rate.
+	if uv2: arrays[Mesh.ARRAY_TEX_UV2] = u
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	if material != null: mesh.surface_set_material(mesh.get_surface_count() - 1, material)
 

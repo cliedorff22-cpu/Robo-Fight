@@ -467,8 +467,9 @@ func _floor_finish(glossy: bool) -> void:
 	# The material is shared by every fight: its own finish is kept on it.
 	if not deck.has_meta("matt"): deck.set_meta("matt", Vector2(deck.roughness, deck.metallic))
 	var matt: Vector2 = deck.get_meta("matt")
-	deck.roughness = 0.5 if glossy else matt.x
-	deck.metallic = 0.32 if glossy else matt.y
+	var gloss: Vector2 = deck.get_meta("gloss", Vector2(0.5, 0.32))
+	deck.roughness = gloss.x if glossy else matt.x
+	deck.metallic = gloss.y if glossy else matt.y
 
 func _blur(on: bool) -> void:
 	_lens.dof_blur_far_enabled = on

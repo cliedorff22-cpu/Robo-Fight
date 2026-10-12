@@ -19,11 +19,55 @@ var _wear_albedo: Texture2D
 var _wear_normal: Texture2D
 var _nrm := 0.35
 
+# ---- scanned surfaces (graphics tier 3). Texture sets photographed from real
+# steel, rubber, plastic and concrete (CC0, see assets/CREDITS.md) take the
+# place of the generated maps on the same materials, so the switch is live.
+static var _want_scanned := true
+const SCAN_PATH := "res://assets/textures/%s/%s.jpg"
+# material -> [texture set, repeats, tint, metallic, roughness (times the
+# scan's own), normal strength]. A tint above white brightens a scan.
+const SCANNED := {
+	"steel": ["steel", 2.0, Color(1.0, 1.0, 1.0), 0.6, 1.0, 1.0],
+	"darkSteel": ["dark_steel", 2.0, Color(1.25, 1.25, 1.25), 0.45, 0.85, 1.0],
+	"augerFlight": ["steel", 2.0, Color(0.9, 0.9, 0.9), 0.6, 1.0, 1.0],
+	"sawBlade": ["brushed", 1.0, Color(1.35, 1.37, 1.4), 0.9, 0.55, 0.6],
+	"ar500_steel": ["steel", 2.0, Color(0.95, 0.96, 0.98), 0.6, 1.05, 1.0],
+	"grade5_ti": ["machined", 2.0, Color(1.05, 1.05, 1.06), 0.65, 0.95, 0.8],
+	"hardox": ["steel", 2.0, Color(0.72, 0.74, 0.78), 0.6, 1.1, 1.0],
+	"uhmw": ["plastic", 1.4, Color(0.9, 0.88, 0.83), 0.0, 1.0, 1.0],
+	"rubber": ["rubber", 3.0, Color(1.0, 1.0, 1.0), 0.0, 1.0, 1.0],
+	"hub": ["machined", 2.0, Color(0.95, 0.96, 0.98), 0.75, 0.9, 1.0],
+	"hubFine": ["machined", 2.0, Color(0.95, 0.96, 0.98), 0.75, 0.9, 1.0],
+	"weaponSteel": ["brushed", 1.5, Color(1.3, 1.31, 1.33), 0.85, 0.8, 0.8],
+	"weaponSteelFine": ["brushed", 1.5, Color(1.3, 1.31, 1.33), 0.85, 0.8, 0.8],
+	"robotDark": ["machined", 2.0, Color(0.5, 0.51, 0.54), 0.8, 0.95, 1.0],
+	"robotDarkFine": ["machined", 2.0, Color(0.5, 0.51, 0.54), 0.8, 0.95, 1.0],
+}
+# The deck: [texture set, repeats across the floor, tint] and its finish as
+# (roughness, metalness), matt and with reflections on (see Stage._floor_finish).
+const SCANNED_DECK := ["deck", 9.0, Color(0.78, 0.8, 0.84)]
+const DECK_MATT := Vector2(0.76, 0.18)
+const DECK_GLOSS := Vector2(0.5, 0.32)
+const SCANNED_DECK_MATT := Vector2(1.55, 0.3)
+const SCANNED_DECK_GLOSS := Vector2(1.1, 0.42)
+var scanned := false
+var _plain := {}              # material -> its generated look, to go back to
+var _surfaces := []           # [[material, set, repeats, tint, metallic, roughness]] made by surface()
+var _arena_repeat := 4.0
+var _deck_overlay = null      # { albedo, normal }: seams and stains over the scanned deck
+
 ## The one library everything draws with. `style` is arena.json's style block
 ## (only read the first time).
 static func shared(style_block: Dictionary = {}, arena_repeat := 4.0) -> Mats:
-	if _shared == null: _shared = Mats.new(style_block, arena_repeat)
+	if _shared == null:
+		_shared = Mats.new(style_block, arena_repeat)
+		_shared.set_scanned(_want_scanned)
 	return _shared
+
+## The Graphics settings that are the materials' own: scanned surfaces.
+static func apply_settings(settings: Dictionary) -> void:
+	_want_scanned = Gfx.on(settings, "gfxTextures")
+	if _shared != null: _shared.set_scanned(_want_scanned)
 
 ## A material by name ("steel", "rubber", "weaponSteel" ...), or null.
 func m(name: String) -> StandardMaterial3D:
@@ -49,6 +93,7 @@ static func _std(color: Color, metal: float, rough: float, albedo: Texture2D = n
 
 func _init(style_block: Dictionary, arena_repeat: float) -> void:
 	style = style_block
+	_arena_repeat = arena_repeat
 	var floor_wear: float = J.g(style, "floorWear", 0.22)
 	var metal_wear: float = J.g(style, "metalWear", 0.3)
 	_nrm = J.g(style, "normalStrength", 0.35)
@@ -75,6 +120,8 @@ func _init(style_block: Dictionary, arena_repeat: float) -> void:
 	floor_mat.roughness_texture = floor_maps.rough
 	floor_mat.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_GREEN
 	lib.steelFloor = rep.call(floor_mat, arena_repeat)
+	floor_mat.set_meta("matt", DECK_MATT)
+	floor_mat.set_meta("gloss", DECK_GLOSS)
 	lib.steel = rep.call(_std(Color.html("#aeb4bd"), 0.45, 0.48, steel_m.albedo, steel_m.normal, nrm), 3.0)
 	lib.darkSteel = rep.call(_std(Color.html("#8c929b"), 0.4, 0.58, dark_m.albedo, dark_m.normal, nrm * 0.8), 3.0)
 
@@ -159,6 +206,143 @@ func set_paint_maps(mat: StandardMaterial3D, maps: Dictionary) -> void:
 		mat.metallic_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_BLUE
 		mat.roughness = 1.0
 		mat.metallic = 1.0
+
+# ---------------------------------------------------------------- scanned surfaces
+
+static func _scan(set_name: String, map: String) -> Texture2D:
+	var path := SCAN_PATH % [set_name, map]
+	return load(path) if ResourceLoader.exists(path) else null
+
+## True if the texture sets are there to use (they ship with the game; a
+## copy without its assets folder falls back to the generated maps).
+static func has_scans() -> bool:
+	return ResourceLoader.exists(SCAN_PATH % ["deck", "color"])
+
+const _KEPT := ["albedo_color", "albedo_texture", "normal_enabled", "normal_texture", "normal_scale",
+	"roughness_texture", "roughness_texture_channel", "roughness", "metallic", "uv1_scale", "detail_enabled"]
+
+func _keep(mat: StandardMaterial3D) -> void:
+	if _plain.has(mat): return
+	var d := {}
+	for k in _KEPT: d[k] = mat.get(k)
+	_plain[mat] = d
+
+func _dress(mat: StandardMaterial3D, set_name: String, repeats: float, tint: Color, metal: float, rough: float, normal := 1.0) -> void:
+	_keep(mat)
+	mat.albedo_color = Color(tint.r, tint.g, tint.b, mat.albedo_color.a)
+	mat.albedo_texture = _scan(set_name, "color")
+	mat.normal_enabled = true
+	mat.normal_texture = _scan(set_name, "normal")
+	mat.normal_scale = normal
+	mat.roughness_texture = _scan(set_name, "rough")
+	mat.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+	mat.roughness = rough
+	mat.metallic = metal
+	mat.uv1_scale = Vector3(repeats, repeats, repeats)
+
+## Switch every material between its scanned texture set and its generated
+## maps. The materials stay the same objects, so what is already on screen
+## changes with them.
+func set_scanned(on: bool) -> void:
+	on = on and has_scans()
+	if on == scanned: return
+	scanned = on
+	var deck: StandardMaterial3D = lib.steelFloor
+	if not on:
+		for mat in _plain:
+			for k in _plain[mat]: mat.set(k, _plain[mat][k])
+		deck.set_meta("matt", DECK_MATT)
+		deck.set_meta("gloss", DECK_GLOSS)
+		return
+	for name in SCANNED:
+		var q: Array = SCANNED[name]
+		_dress(lib[name], q[0], q[1], q[2], q[3], q[4], q[5])
+	for q in _surfaces: _dress(q[0], q[1], q[2], q[3], q[4], q[5])
+	# The deck: scanned steel close up, with the plates' seams and the years
+	# of oil, rubber and scuffs laid over it once across each four plates (the
+	# detail layer, on the second UV set) so the scan's repeat never shows.
+	_dress(deck, SCANNED_DECK[0], SCANNED_DECK[1], SCANNED_DECK[2], SCANNED_DECK_MATT.y, SCANNED_DECK_MATT.x)
+	deck.set_meta("matt", SCANNED_DECK_MATT)
+	deck.set_meta("gloss", SCANNED_DECK_GLOSS)
+	if _deck_overlay == null: _deck_overlay = _deck_marks(J.g(style, "floorWear", 0.22))
+	deck.detail_enabled = true
+	deck.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	deck.detail_uv_layer = BaseMaterial3D.DETAIL_UV_2
+	deck.detail_albedo = _deck_overlay.albedo
+	deck.detail_normal = _deck_overlay.normal
+	deck.uv2_scale = Vector3(_arena_repeat, _arena_repeat, _arena_repeat)
+
+## A plain tiling surface for the hall (concrete, painted steel): the scanned
+## set when those are on, the flat colour `plain` when not. Memoised by look.
+func surface(set_name: String, repeats: float, tint: Color, plain: Color, rough := 0.9, metal := 0.0) -> StandardMaterial3D:
+	for q in _surfaces:
+		if q[1] == set_name and q[2] == repeats and q[3] == tint and q[6] == plain: return q[0]
+	var mat := _std(plain, metal, rough)
+	_surfaces.append([mat, set_name, repeats, tint, metal, 1.0, plain])
+	if scanned: _dress(mat, set_name, repeats, tint, metal, 1.0)
+	return mat
+
+## What lies over the scanned deck, on a clear ground: the seams between the
+## plates and their bolts, broad darker and lighter patches, oil, scorch,
+## rubber and the pale scuffs robots leave. And its height, as a normal map.
+func _deck_marks(wear: float) -> Dictionary:
+	var S := 1024
+	var g := TexPaint.new(S, Color(0.08, 0.08, 0.09, 0.0), 111)
+	var h := TexPaint.new(S, Color.html("#808080"), 112)
+	# Patches of tone, so no two plates are the same grey.
+	for i in 46:
+		var light := g.rnd(0, 1) > 0.62
+		g.blob(g.rnd(0, S), g.rnd(0, S), g.rnd(80, 300), TexPaint.rgba(150, 156, 168, g.rnd(0.05, 0.14)) if light else TexPaint.rgba(8, 8, 10, g.rnd(0.12, 0.34)))
+	# Pale scuffs: where steel slid over paint.
+	for i in int(round(260 * (0.4 + wear))):
+		var a0 := g.rnd(0, TAU)
+		var v := g.rnd(120, 190)
+		g.arc(g.rnd(0, S), g.rnd(0, S), g.rnd(30, 420), a0, a0 + g.rnd(0.08, 0.7), g.rnd(1.5, 4.0), TexPaint.rgba(v, v, v + 6, g.rnd(0.08, 0.3)))
+	# Rubber laid down by spinning wheels.
+	for i in int(round(70 * (0.4 + wear))):
+		var a0 := g.rnd(0, TAU)
+		g.arc(g.rnd(0, S), g.rnd(0, S), g.rnd(16, 150), a0, a0 + g.rnd(0.3, 2.4), g.rnd(3, 11), TexPaint.rgba(6, 6, 7, g.rnd(0.2, 0.5)))
+	# Oil, with a slick middle, and scorch.
+	for i in int(round(30 * wear)):
+		var x := g.rnd(0, S)
+		var y := g.rnd(0, S)
+		var r := g.rnd(22, 78)
+		g.blotch(x, y, r, TexPaint.rgba(5, 5, 7, g.rnd(0.35, 0.7)))
+		h.blotch(x, y, r, TexPaint.rgba(128, 128, 128, 0.8))
+	for i in int(round(16 * wear)):
+		var x := g.rnd(0, S)
+		var y := g.rnd(0, S)
+		var r := g.rnd(26, 90)
+		g.blob(x, y, r, TexPaint.rgba(20, 16, 13, 0.55))
+		g.blob(x, y, r * 0.6, TexPaint.rgba(4, 4, 4, 0.7))
+	# Gouges: a bright scrape cut into the plate.
+	for i in int(round(40 * wear)):
+		var sc := _gouge(g, S, g.rnd(30, 170), g.rnd(1.0, 3.0))
+		h.line(sc[0], sc[1], sc[2], sc[3], maxf(1.5, sc[4] * 1.5), Color.html("#303030"))
+	# The seams of a 4 x 4 plate grid: a dark gap with a worn bright edge, and
+	# countersunk bolts along it.
+	for i in 4:
+		var p := (S / 4.0) * i
+		g.rect(p - 7, 0, 14, S, TexPaint.rgba(4, 4, 5, 0.22 + 0.2 * wear))
+		g.rect(0, p - 7, S, 14, TexPaint.rgba(4, 4, 5, 0.22 + 0.2 * wear))
+		g.rect(p - 3.5, 0, 1.5, S, TexPaint.rgba(150, 154, 162, 0.5))
+		g.rect(0, p - 3.5, S, 1.5, TexPaint.rgba(150, 154, 162, 0.5))
+		g.rect(p - 2, 0, 4, S, TexPaint.rgba(3, 3, 4, 0.95))
+		g.rect(0, p - 2, S, 4, TexPaint.rgba(3, 3, 4, 0.95))
+		h.rect(p - 4, 0, 8, S, Color.html("#7a7a7a"))
+		h.rect(0, p - 4, S, 8, Color.html("#7a7a7a"))
+		h.rect(p - 2, 0, 4, S, Color.html("#2c2c2c"))
+		h.rect(0, p - 2, S, 4, Color.html("#2c2c2c"))
+		var q := S / 32.0
+		while q < S:
+			for off in [-13.0, 13.0]:
+				for at in [Vector2(p + off, q), Vector2(q, p + off)]:
+					g.disc(at.x, at.y, 4.2, TexPaint.rgba(10, 10, 12, 0.9))
+					g.disc(at.x, at.y, 2.8, TexPaint.rgba(96, 100, 108, 0.95))
+					h.disc(at.x, at.y, 4.2, Color.html("#505050"))
+					h.disc(at.x, at.y, 2.6, Color.html("#8c8c8c"))
+			q += S / 16.0
+	return {"albedo": g.texture(), "normal": h.normal_texture(2.4)}
 
 # ---------------------------------------------------------------- the maps
 

@@ -210,6 +210,8 @@ func _build() -> void:
 		_wheel_nodes.append(w)
 		_tyres.append(tyre)
 
+	_build_carriers(r, wheel_w)
+
 	# Where the insides would smoke from, in the robot's own frame.
 	var wv = J.path(shape, ["weapon", "visual"])
 	_smoke_at = {
@@ -224,6 +226,117 @@ func _build() -> void:
 
 	update_wheels()
 	if _paint != null: _order_paint(livery, shape)
+
+# ---- what carries the wheels. Every wheel is on an axle out of the body's
+# side. Where the body is narrower than the track at that wheel - a dart's
+# nose, a round body inside its wheelbase - a pair of arms reaches out from
+# the body to a hub carrier, as an open-wheeled car's do, so no wheel hangs in
+# the air beside it. Arms that would cross a horizontal spinner's sweep step
+# over it instead (or under, if there is no body up there to start from).
+func _build_carriers(r: float, wheel_w: float) -> void:
+	# The body, as the planes of its pieces: how far out it reaches beside a wheel.
+	var solids := []
+	for p in rig.shape.pieces:
+		if not _is_hull(p): continue
+		var planes := []
+		for f in Hull.convex_faces(p.points).faces: planes.append([f.n, f.d])
+		if not planes.is_empty(): solids.append(planes)
+	if solids.is_empty(): return
+	# The body's side at (x, y) on side s: its distance from the centreline, 0 if none.
+	var reach := func(x: float, y: float, s: float) -> float:
+		var best := 0.0
+		for planes in solids:
+			var lo := -INF
+			var hi := INF
+			for pl in planes:
+				var n: Vector3 = pl[0]
+				var rest: float = pl[1] - n.x * x - n.y * y
+				if absf(n.z) < 1e-9:
+					if rest < 0.0:
+						lo = INF
+						break
+				elif n.z > 0.0: hi = minf(hi, rest / n.z)
+				else: lo = maxf(lo, rest / n.z)
+			# (A piece too thin to have faces on both sides bounds nothing.)
+			if lo <= hi and lo > -INF and hi < INF: best = maxf(best, hi if s > 0.0 else -lo)
+		return best
+	var wv = J.path(rig.shape, ["weapon", "visual"])
+	var sweep = wv if (wv is Dictionary and wv.get("kind") == "rotor" and wv.get("axis") == "y") else null
+	# Whether the straight line a-b passes through the spinner's sweep.
+	var swept := func(a: Vector3, b: Vector3) -> bool:
+		if sweep == null: return false
+		var c: Vector3 = sweep.center
+		for k in 9:
+			var q := a.lerp(b, k / 8.0)
+			if absf(q.y - c.y) < sweep.thickness / 2.0 + 0.012 and Vector2(q.x - c.x, q.z - c.z).length() < sweep.radius + 0.015: return true
+		return false
+	var drop: float = rig.rest_length * (1.0 - rig.preload_frac)
+	var ground: float = rig.shape.groundY
+	var arms := Geo.new()
+	var hubs := Geo.new()
+	for wh in rig.wheels:
+		var c: Vector3 = wh.anchor - Vector3(0, drop, 0)
+		var s := signf(c.z)
+		var face := absf(c.z) - wheel_w / 2.0
+		# The height to leave the body at: the axle's, or the nearest the body
+		# has at this wheel (a low nose is all below it).
+		var ya := NAN
+		for k in 17:
+			var y: float = c.y + (((k + 1) / 2) * 0.012) * (-1.0 if k % 2 == 1 else 1.0)
+			if reach.call(c.x, y, s) > 0.02:
+				ya = y
+				break
+		if is_nan(ya): continue
+		var side: float = reach.call(c.x, ya, s)
+		# The axle: out of the body (or the hub carrier) into the wheel.
+		var inner := maxf(side - 0.012, 0.0)
+		var carried: bool = face - side > 0.014 or absf(ya - c.y) > 0.02
+		if carried: inner = face - 0.02
+		hubs.append(Geo.cylinder(r * 0.15, r * 0.15, absf(c.z) - inner, 12).rotate_x(PI / 2.0).translate(c.x, c.y, s * (absf(c.z) + inner) / 2.0))
+		if not carried: continue
+		var d := clampf(r * 0.55, 0.03, 0.06)
+		var hub_z := face - 0.012
+		hubs.append(Geo.box(d * 1.3, r * 0.5, 0.014).translate(c.x, c.y, s * hub_z))
+		# Over the sweep, under it, or straight across.
+		var probe_a := Vector3(c.x, ya, s * side)
+		var probe_b := Vector3(c.x, c.y, s * hub_z)
+		var via := NAN
+		if swept.call(probe_a, probe_b):
+			var over: float = sweep.center.y + sweep.thickness / 2.0 + 0.03
+			var under: float = sweep.center.y - sweep.thickness / 2.0 - 0.03
+			if reach.call(c.x, over, s) > 0.02: via = over
+			elif under > ground + 0.015 and reach.call(c.x, under, s) > 0.02: via = under
+		for k in [-1.0, 1.0]:
+			var end := Vector3(c.x + k * d * 0.45, c.y, s * hub_z)
+			var y0: float = ya if is_nan(via) else via
+			var xb: float = c.x + k * d * 1.5
+			var out: float = reach.call(xb, y0, s)
+			if out <= 0.02:
+				xb = c.x
+				out = reach.call(xb, y0, s)
+			var start := Vector3(xb, y0, s * maxf(out - 0.012, 0.0))
+			if is_nan(via): arms.append(_beam(start, end))
+			else:
+				# Out level past the sweep, then down (or up) to the hub.
+				var elbow := Vector3(end.x, via, end.z)
+				arms.append(_beam(start, elbow))
+				arms.append(_beam(elbow, end))
+	if arms.count() == 0 and hubs.count() == 0: return
+	var parts := []
+	if arms.count() > 0: parts.append({"geo": arms, "mat": "dark"})
+	if hubs.count() > 0: parts.append({"geo": hubs, "mat": "hub"})
+	_tag(_add_parts(self, parts), "wheel")
+
+# A box beam from a to b.
+static func _beam(a: Vector3, b: Vector3, w := 0.018, h := 0.026) -> Geo:
+	var along := b - a
+	var l := along.length()
+	if l < 1e-5: return Geo.new()
+	var x := along / l
+	var z := x.cross(Vector3.UP)
+	if z.length_squared() < 1e-6: z = Vector3.BACK
+	z = z.normalized()
+	return Geo.box(l + w, h, w).apply(Transform3D(Basis(x, z.cross(x), z), (a + b) / 2.0))
 
 func _build_weapon(shape: Dictionary, look: Dictionary, hull_points: Array) -> void:
 	# ---- the weapon, from the shape's description of it: built from the

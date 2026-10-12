@@ -131,7 +131,7 @@ static func wheel_layout(assembled: Dictionary) -> Dictionary:
 	var clearance: float = maxf(0.008, stats.groundClearanceM)
 	var anchor_y: float = -dims.heightM / 2.0 - clearance + rest_length * SUSPENSION_PRELOAD + stats.wheelRadiusM
 	var x: float = stats.wheelbaseHalfM   # axles inboard of the ends
-	var z: float = stats.trackHalfM       # just outboard of the side armour
+	var z: float = Shape.wheel_track(assembled)   # just outboard of the side armour
 	return {
 		"anchorY": anchor_y, "restLength": rest_length, "clearance": clearance,
 		# The body centre's height when it sits on its springs.

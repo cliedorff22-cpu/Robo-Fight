@@ -11,6 +11,10 @@
 class_name ArenaView
 extends Node3D
 
+# Width of the hazard-striped frames round a killsaw's cover and round the pit.
+const SAW_RIM := 0.17
+const PIT_RIM := 0.2
+
 var arena: Dictionary
 var world: ArenaWorld
 var hazards: Hazards
@@ -215,9 +219,19 @@ func _build() -> void:
 
 	# ---- floor markings, after the toy BattleBox and the real deck: a big
 	# red and blue starting square on each side and a yellow line round the floor.
+	# Where a layout puts a killsaw or the pit in a starting square, the paint
+	# stops at its frame: two flat things at one height flicker through each other.
+	var plates := []
+	for h in hazards.all:
+		var p: Dictionary = h.pieces[0]
+		if h.type == "killsaw":
+			plates.append(_yawed_rect(p.pos.x, p.pos.z, _saw_cover_width(p) + SAW_RIM * 2.0, p.slotLength + SAW_RIM * 2.0, p.yaw))
+		elif h.type == "pit":
+			plates.append(Rect2(p.pos.x - p.hw - PIT_RIM, p.pos.z - p.hl - PIT_RIM, (p.hw + PIT_RIM) * 2.0, (p.hl + PIT_RIM) * 2.0))
 	var square := U.ft_to_m(8.0)
 	for s in arena.spawns:
-		flat.add(_flat(square, square, U.ft_to_m(s.pos[0]), 0.002, U.ft_to_m(s.pos[2])),
+		var at := Vector2(U.ft_to_m(s.pos[0]), U.ft_to_m(s.pos[2]))
+		flat.add(_plate(Rect2(at.x - square / 2.0, at.y - square / 2.0, square, square), plates, 0.002),
 			_decal(Color.html("#b31c22") if s.id == "red" else Color.html("#1f8fd0"), 0.82))
 	var line_in := U.ft_to_m(20.6)
 	var line_w := U.ft_to_m(0.35)
@@ -364,7 +378,7 @@ func _build_swinger(h: Hazards.Hazard, solid: Batch) -> void:
 # before it drops, and the deck panel itself, posed from physics.
 func _build_pit(h: Hazards.Hazard, flat: Batch) -> void:
 	var p: Dictionary = h.pieces[0]
-	var rim := 0.2
+	var rim := PIT_RIM
 	var at := Transform3D(Basis.IDENTITY, Vector3(p.pos.x, 0, p.pos.z))
 	for q in [
 		[p.hw * 2.0 + rim * 2.0, rim, 0.0, -p.hl - rim / 2.0], [p.hw * 2.0 + rim * 2.0, rim, 0.0, p.hl + rim / 2.0],
@@ -417,7 +431,7 @@ func _build_killsaw(h: Hazards.Hazard, solid: Batch, flat: Batch) -> void:
 	for q in [[-1, -1], [1, -1], [-1, 1], [1, 1], [-1, 0], [1, 0]]:
 		flat.add(Geo.cylinder(0.018, 0.018, 0.006, 8).translate(q[0] * (slot_w / 2.0 - 0.05), 0.004, q[1] * (slot_l / 2.0 - 0.05)).apply(slot), mats.lib.steel)
 	# Hazard-striped border, exactly as the real box marks its saw slots.
-	var rim := 0.17
+	var rim := SAW_RIM
 	for q in [
 		[rim, slot_l + rim * 2.0, -(slot_w + rim) / 2.0, 0.0], [rim, slot_l + rim * 2.0, (slot_w + rim) / 2.0, 0.0],
 		[slot_w, rim, 0.0, -(slot_l + rim) / 2.0], [slot_w, rim, 0.0, (slot_l + rim) / 2.0],

@@ -16,6 +16,10 @@
 ## hull.gd).
 class_name RoundedHull
 
+## How far a corner may end up from the rounded piece, as a share of the
+## radius: a square corner is 0.73 of it (root 3, less 1), so a little over.
+const KEEP := 0.85
+
 ## opt: { radius = 0.012, step = PI/12, minFrac = 0.28 }
 ## Returns { positions: PackedVector3Array, normals: PackedVector3Array, radius } or null.
 static func build(points, opt: Dictionary = {}):
@@ -38,36 +42,32 @@ static func build(points, opt: Dictionary = {}):
 		for q in pts: lo = minf(lo, n.dot(q))
 		min_width = minf(min_width, p[1] - lo)
 	var r := minf(radius, min_frac * min_width)
-	if not (r > 5e-4): return null
 
 	# The shrunk hull: every plane pulled in by r. Its corners are where three
 	# planes meet inside all the others.
-	var np := planes.size()
-	var inner_n := PackedVector3Array()
-	var inner_d := PackedFloat64Array()
-	for p in planes:
-		inner_n.append(p[0])
-		inner_d.append(p[1] - r)
+	#
+	# A piece that tapers - a wedge, a dart's nose, a skin over a slope - is
+	# thick at one end and thin at the other, and shrinking it by a radius the
+	# thick end can take leaves nothing of the thin end: the nose would be
+	# drawn centimetres short of where physics has it, and whatever is bolted
+	# to it would hang in the air. So the radius comes down until every corner
+	# of the hull is still there: no further from the shrunk hull than a
+	# square corner would be.
 	var solved := PackedVector3Array()
-	for i in np:
-		var pn := inner_n[i]
-		var pd := inner_d[i]
-		for j in range(i + 1, np):
-			var qn := inner_n[j]
-			var qd := inner_d[j]
-			var pq := pn.cross(qn)
-			if pq.length_squared() < 1e-12: continue      # parallel planes meet nowhere
-			for k in range(j + 1, np):
-				var rn := inner_n[k]
-				var det := pq.dot(rn)
-				if absf(det) < 1e-7: continue
-				var x := (qn.cross(rn) * pd + rn.cross(pn) * qd + pq * inner_d[k]) / det
-				var ok := true
-				for h in np:
-					if inner_n[h].dot(x) - inner_d[h] > 2e-5:
-						ok = false
-						break
-				if ok: solved.append(x)
+	var kept := false
+	for attempt in 14:
+		if not (r > 5e-4): return null
+		solved = _shrunk_corners(planes, r)
+		var worst := 0.0
+		for q in pts:
+			var near := INF
+			for x in solved: near = minf(near, q.distance_to(x))
+			worst = maxf(worst, near - r)
+		if worst <= r * KEEP + 0.0015:
+			kept = true
+			break
+		r *= 0.78
+	if not kept: return null
 
 	# Corners closer than a millimetre or so are one corner: where a small
 	# face was squeezed out they crowd together and only make slivers - and
@@ -202,6 +202,37 @@ class Builder:
 		else:
 			positions.append(p0); positions.append(p1); positions.append(p2)
 			normals.append(n0); normals.append(n1); normals.append(n2)
+
+## The corners of the hull with every plane pulled in by r: where three planes
+## meet inside all the others.
+static func _shrunk_corners(planes: Array, r: float) -> PackedVector3Array:
+	var np := planes.size()
+	var inner_n := PackedVector3Array()
+	var inner_d := PackedFloat64Array()
+	for p in planes:
+		inner_n.append(p[0])
+		inner_d.append(p[1] - r)
+	var solved := PackedVector3Array()
+	for i in np:
+		var pn := inner_n[i]
+		var pd := inner_d[i]
+		for j in range(i + 1, np):
+			var qn := inner_n[j]
+			var qd := inner_d[j]
+			var pq := pn.cross(qn)
+			if pq.length_squared() < 1e-12: continue      # parallel planes meet nowhere
+			for k in range(j + 1, np):
+				var rn := inner_n[k]
+				var det := pq.dot(rn)
+				if absf(det) < 1e-7: continue
+				var x := (qn.cross(rn) * pd + rn.cross(pn) * qd + pq * inner_d[k]) / det
+				var ok := true
+				for h in np:
+					if inner_n[h].dot(x) - inner_d[h] > 2e-5:
+						ok = false
+						break
+				if ok: solved.append(x)
+	return solved
 
 static func _ekey(a: int, b: int) -> Vector2i:
 	return Vector2i(a, b) if a < b else Vector2i(b, a)

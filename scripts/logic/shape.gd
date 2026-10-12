@@ -44,6 +44,25 @@ static func _wclass(assembled: Dictionary):
 	var w = assembled.parts.get("weapon")
 	return w.spec["class"] if w != null else null
 
+## Clear air between a tyre and anything beside or over it.
+const WHEEL_GAP := 0.005
+
+## Where the wheels stand: how far their centres are from the centreline.
+## Outboard of the side armour, so that no tyre runs in a plate - the build's
+## own track (stats.trackHalfM) has them flush with the bare chassis.
+static func wheel_track(assembled: Dictionary) -> float:
+	var w := _in(assembled.parts.wheel.spec.widthIn)
+	return maxf(assembled.stats.trackHalfM, assembled.dims.widthM / 2 + armour_thickness(assembled) + WHEEL_GAP + w / 2)
+
+# How far either side of an axle a tyre is in the way of something flat whose
+# underside is at height y: nothing where that is over the tyre.
+static func _tyre_span(assembled: Dictionary, y: float) -> float:
+	var st: Dictionary = assembled.stats
+	var r: float = st.wheelRadiusM
+	var h: float = y - (-assembled.dims.heightM / 2 - st.groundClearanceM + r)
+	if h >= r + WHEEL_GAP: return 0.0
+	return sqrt(maxf(0.0, r * r - h * h)) + WHEEL_GAP + 0.003
+
 ## Returns { template, pieces, weapon, invertible, wheelTopY, groundY, bounds, frontX }
 static func build_shape(assembled: Dictionary) -> Dictionary:
 	var body: Dictionary = J.g(assembled.get("def"), "body", {})
@@ -812,6 +831,15 @@ static func half_width_at(core: Dictionary, x: float, y: float) -> float:
 		best = maxf(best, maxf(absf(_lerp(at.zc - at.hw, at.zt - at.hwt, f)), absf(_lerp(at.zc + at.hw, at.zt + at.hwt, f))))
 	return best
 
+## How tall the body stands at station x, anywhere across it (-INF: no body).
+static func _roof_at(core: Dictionary, x: float) -> float:
+	if core.get("solids") == null: return surface_at(core, x, 0.0)
+	var best := -INF
+	for run in core.solids:
+		var at = _section_at(run, x)
+		if at != null: best = maxf(best, at.yt)
+	return best
+
 ## The body's length: [rear x, front x].
 static func _x_range(core: Dictionary) -> Array:
 	if core.get("round", false): return [-core.radius * core.apothem, core.radius * core.apothem]
@@ -954,10 +982,16 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 					Vector3(x1, y0 + 0.006, z - w / 2), Vector3(x1, y0 + 0.006, z + w / 2),
 				]))
 		"wheelGuards":
-			# Armoured pods round the tyres, the full length of the wheelbase.
+			# Armour round the tyres: a rail outside them, the length of the
+			# body, and a roof joining it to the body's side. A tyre that
+			# stands taller than the roof is not roofed over - the roof
+			# bridges the gaps before, between and after the wheels instead,
+			# so nothing ever runs through a tyre.
 			var r: float = st.wheelRadiusM
-			var z_out: float = st.trackHalfM + _in(assembled.parts.wheel.spec.widthIn) * 0.6 + 0.01
-			var x0: float = -st.wheelbaseHalfM - r * 1.1
+			var half_w := _in(assembled.parts.wheel.spec.widthIn) / 2
+			var rail_in: float = wheel_track(assembled) + half_w + WHEEL_GAP
+			var z_out := rail_in + 0.012
+			var x0: float = minf(-st.wheelbaseHalfM - r * 1.1, maxf(ends[0], -L / 2))
 			var x1: float = maxf(nose, st.wheelbaseHalfM + r * 1.1) + _in(_n(ex, "forwardIn", 0.0))
 			var y_top := minf(top, yb + _c(_n(ex, "height", 0.85), 0.3, 1.0) * H)
 			# Its inner edge meets the body where the body is widest at that
@@ -967,22 +1001,27 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 				for k in 9: m = maxf(m, half_width_at(core, _lerp(x0, x1, k / 8.0), y))
 				return m
 			# Where the body draws in a lot by that height (a dome, a tent, a
-			# cab narrower than its deck) the pod comes down to its shoulder.
+			# cab narrower than its deck) the roof comes down to its shoulder.
 			var floor_w: float = widest.call(yb + 0.012)
 			var reach: float = widest.call(y_top - 0.006)
 			while reach < floor_w * 0.85 and y_top - H * 0.05 >= yb + H * 0.45:
 				y_top -= H * 0.05
 				reach = widest.call(y_top - 0.006)
 			var z_in := W / 2 if (reach <= 0.0 or reach >= W / 2 - 1e-4) else reach - 0.008
+			var roof := y_top - 0.012
+			# The stretches of roof the tyres leave room for.
+			var clip := _tyre_span(assembled, roof)
+			var spans := [[x0, x1]]
+			if clip > 0.0:
+				var wb: float = st.wheelbaseHalfM
+				spans = [[x0, -wb - clip], [-wb + clip, wb - clip], [wb + clip, x1]]
 			for sd in sides:
 				var s: float = sd[1]
-				# Open underneath (the tyre needs the floor), so it is a hood:
-				# top plate plus outer wall, as one convex hull.
-				var pts := []
-				for x in [x0, x1]:
-					pts.append(Vector3(x, yb + 0.01, s * z_out)); pts.append(Vector3(x, y_top, s * z_out))
-					pts.append(Vector3(x, y_top, s * z_in)); pts.append(Vector3(x, yb + 0.01, s * (z_out - 0.012)))
-				out.append(_piece("extra:wheelGuards:%s" % sd[0], "guard", "trim", pts))
+				out.append(_piece("extra:wheelGuards:%s" % sd[0], "guard", "trim", box_corners(x0, yb + 0.01, s * rail_in, x1, y_top, s * z_out)))
+				for k in spans.size():
+					if spans[k][1] - spans[k][0] < 0.025: continue
+					out.append(_piece("extra:wheelGuards:%s:roof%d" % [sd[0], k], "guard", "trim",
+						box_corners(spans[k][0], roof, s * z_in, spans[k][1], y_top, s * (rail_in + 0.002))))
 		"uprights":
 			# Twin posts carrying a front weapon, Tombstone-style. They stand
 			# behind the step cut for the bar, not over it.
@@ -1224,23 +1263,59 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 					pts.append(Vector3(xx, hi + h, crown)); pts.append(Vector3(xx, hi + h, -crown))
 				out.append(_piece("extra:cage:%s" % kx[0], "top", "metal", pts))
 		"wings":
-			# Flat side wings out over the wheels, like a hydroplane.
+			# Flat side wings, like a hydroplane's: out over the wheels where
+			# the body stands tall enough to carry them there, and otherwise
+			# sponsons between the wheels - never a plate through a tyre.
 			var length := L * _c(_n(ex, "length", 0.6), 0.2, 0.95)
-			var reach := _in(_n(ex, "reachIn", 4.0))
-			var y := minf(top, yb + 2.0 * st.wheelRadiusM - st.groundClearanceM + 0.01)
-			# Rooted in the body's side where it is at that height - and no
-			# higher than the body is along them (a nose that drops away).
-			var side := 0.0
-			for k in 9: side = maxf(side, half_width_at(core, _lerp(-length / 2, length / 2, k / 8.0), y - 0.006))
-			if side <= 0.0:
-				var roof := -INF
-				for k in 9: roof = maxf(roof, surface_at(core, _lerp(-length / 2, length / 2, k / 8.0), 0.0))
-				if roof > -INF: y = minf(y, roof)
-				for k in 9: side = maxf(side, half_width_at(core, _lerp(-length / 2, length / 2, k / 8.0), y - 0.006))
-			var z_in := W / 2 - 0.01 if (side <= 0.0 or side >= W / 2 - 1e-4) else side - 0.01
-			for sd in sides:
-				var s: float = sd[1]
-				out.append(_piece("extra:wings:%s" % sd[0], "guard", "accent", box_corners(-length / 2, y - 0.012, s * z_in, length / 2, y, s * (st.trackHalfM + reach))))
+			var track := wheel_track(assembled)
+			var out_z: float = track + _in(_n(ex, "reachIn", 4.0))
+			var t := 0.012
+			var xa := -length / 2
+			var xb := length / 2
+			# Over the tyres: along the longest stretch of the body that is
+			# tall enough to hold a wing up there.
+			var y: float = yb - st.groundClearanceM + 2.0 * st.wheelRadiusM + WHEEL_GAP + t
+			var run := [NAN, NAN]
+			var best := [NAN, NAN]
+			for k in 25:
+				var x := _lerp(xa, xb, k / 24.0)
+				if _roof_at(core, x) >= y - 1e-6:
+					if is_nan(run[0]): run[0] = x
+					run[1] = x
+					if is_nan(best[0]) or run[1] - run[0] > best[1] - best[0]: best = run.duplicate()
+				else: run = [NAN, NAN]
+			if not is_nan(best[0]) and best[1] - best[0] >= length * 0.4:
+				xa = best[0]
+				xb = best[1]
+			else:
+				# Not tall enough: as high as the body is at both ends, which
+				# is level with the tyres - so between them, and no wider.
+				for pass_n in 3:
+					for x in [xa, xb]:
+						var here := _roof_at(core, x)
+						if here > -INF: y = minf(y, here)
+					var clip := _tyre_span(assembled, y - t)
+					if clip <= 0.0: break
+					out_z = minf(out_z, track + _in(assembled.parts.wheel.spec.widthIn) / 2)
+					var room: float = st.wheelbaseHalfM - clip
+					if xa >= -room - 1e-6 and xb <= room + 1e-6: break
+					xa = maxf(xa, -room)
+					xb = minf(xb, room)
+			if xb - xa >= 0.05:
+				# Rooted in the body's side at each end, so its inner edge
+				# follows a body that narrows along it.
+				var root := []
+				for x in [xa, xb]:
+					var side := half_width_at(core, x, y - t / 2)
+					root.append(W / 2 - 0.01 if (side <= 0.0 or side >= W / 2 - 1e-4) else side - 0.01)
+				for sd in sides:
+					var s: float = sd[1]
+					out.append(_piece("extra:wings:%s" % sd[0], "guard", "accent", [
+						Vector3(xa, y - t, s * root[0]), Vector3(xa, y, s * root[0]),
+						Vector3(xb, y - t, s * root[1]), Vector3(xb, y, s * root[1]),
+						Vector3(xa, y - t, s * out_z), Vector3(xa, y, s * out_z),
+						Vector3(xb, y - t, s * out_z), Vector3(xb, y, s * out_z),
+					]))
 		"pod":
 			# Built with the weapon, which knows where the hub is (_weapon_geometry).
 			pass

@@ -53,6 +53,11 @@ advisor, the commentary - and compares everything that came out (about 50,000
 values) with what was recorded last time (`tests/golden/`). Nothing in the
 rules can change without a test saying so.
 
+It then measures every robot's wheels (`tools/wheel_audit.gd`): the wheels
+stand outboard of the side armour, and no plate, guard, wing or leg may cut
+into a tyre. A wheel that stands clear of a narrow body is carried on arms in
+the picture (`render/robot_view.gd`).
+
 When a change is MEANT to alter the rules' output, run the check, read the
 differences it lists, and if they are the ones you expected record the new
 reference:
@@ -74,6 +79,9 @@ $G --path . -s tests/extras_test.gd -- /tmp/extras [weapon|-] [shapes] [extras] 
 $G --headless --path . -s tools/extras_audit.gd -- [weapon|roster]   # the same, measured: floating or buried extras
 $G --path . -s tests/scene_test.gd -- /tmp/fight red_id blue_id layout venue camera seconds ai
 $G --path . -s tests/view_test.gd -- /tmp/robots.png 0 8   # a line-up of robots
+$G --path . -s tests/bot_test.gd -- /tmp/bot robot_id [robot_id ...]   # one robot from six sides: what floats, what cuts into what
+$G --headless --path . -s tools/wheel_audit.gd -- [robot_id ...]     # every robot's wheels, measured (part of tools/check.sh)
+$G --path . -s tests/keys_test.gd                          # a quick fight driven by real key presses, out with M and O
 $G --headless --fixed-fps 10 --path . -s tests/fight_test.gd -- red_id blue_id seed layout   # AI v AI in the physics, no window
 ```
 

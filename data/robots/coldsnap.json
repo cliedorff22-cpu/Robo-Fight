@@ -17,14 +17,19 @@
     "pattern": "stripes"
   },
   "body": {
-    "template": "dart",
+    "template": "box",
     "params": {
-      "slope": 0.75,
-      "rearHeight": 0.8,
-      "noseWidth": 0.5
+      "chamferFront": 0.3,
+      "chamferRear": 0.15
     },
     "mount": "overhead",
-    "extras": []
+    "extras": [
+      {
+        "type": "hump",
+        "heightIn": 2.5,
+        "length": 0.24
+      }
+    ]
   },
   "build": {
     "chassis": "chassis_long",

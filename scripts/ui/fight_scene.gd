@@ -453,6 +453,10 @@ func _toggle_overlay() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not _ready_to_run or not (event is InputEventKey) or not event.pressed or event.echo: return
 	var key: int = (event as InputEventKey).physical_keycode
+	# The key is marked as dealt with after acting on it - but M and O leave
+	# the fight, and by then this scene is out of the tree and has no window
+	# to tell. So the window is found first.
+	var window := get_viewport()
 	match key:
 		KEY_ENTER, KEY_KP_ENTER: do_action("start")
 		KEY_ESCAPE: do_action("pause")
@@ -469,7 +473,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_R: do_action("reset")
 		KEY_P: do_action("replay")
 		_: return
-	get_viewport().set_input_as_handled()
+	window.set_input_as_handled()
 
 ## Everything a key (or an on-screen button) can ask for.
 func do_action(action: String) -> void:

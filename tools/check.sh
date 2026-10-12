@@ -3,6 +3,9 @@
 #   tools/check.sh              parse + every test suite
 #   tools/check.sh parse        parse only
 #   tools/check.sh core career  only those suites
+#   tools/check.sh record       record the suites' reference output again
+#                               (tests/golden/) - after a change that is meant
+#                               to alter what the logic produces
 GODOT="${GODOT:-/Applications/Godot.app/Contents/MacOS/Godot}"
 cd "$(dirname "$0")/.."
 "$GODOT" --headless --path . --import >/dev/null 2>&1

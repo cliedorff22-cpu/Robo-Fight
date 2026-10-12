@@ -232,6 +232,9 @@ static func _loft_core(template: String, ctx: Dictionary) -> Dictionary:
 	return {
 		"pieces": pieces, "sections": main, "lofts": lofts, "vrot": vrot,
 		"solids": solids, "cutX": cut.x0 if cut != null else null,
+		# Where the body steps down under a bar on the nose (not for an
+		# undercutter, which the body stays over).
+		"chinX": cut.x0 if (cut != null and cut.get("maxTop") != null) else null,
 		"frontX": nose.x, "bayX": bay,
 		"topY": top_y,
 		"frontBottomY": nose.yb,
@@ -839,6 +842,20 @@ static func _edge_x(core: Dictionary, y: float, z: float, dir: float) -> float:
 		x -= dir * step
 	return NAN
 
+## The nose as built - after a rotor's cut - as { yb, yt }: the bottom and top
+## of the body's front face.
+static func _nose_face(core: Dictionary) -> Dictionary:
+	var out := {"yb": core.frontBottomY, "yt": J.g(core, "noseTopY", core.topY)}
+	if core.get("round", false): return out
+	var front: float = _x_range(core)[1]
+	var best := -INF
+	for run in core.solids:
+		var last: Dictionary = run[run.size() - 1]
+		if last.x < front - 1e-4 or last.hw <= best: continue
+		best = last.hw
+		out = {"yb": last.yb, "yt": last.yt}
+	return out
+
 ## What a footprint (x ± hx, z ± hz) stands on: the lowest and highest surface
 ## under it and the surface under its centre. ok: there is body under it.
 static func _seat(core: Dictionary, x: float, z: float, hx: float, hz: float) -> Dictionary:
@@ -880,9 +897,20 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 		mid_b = ends[1]
 	# A static wedge on the nose covers whatever is low down behind it.
 	var wedge = ctx.weapon.get("wedge") if ctx.get("weapon") is Dictionary else null
+	# The bearings of a horizontal bar on the nose take up the middle of it.
+	var hub: float = J.g(ctx.get("weapon"), "hubHalfW", 0.0)
+	# A hammer's arm lies along the top: what would stand on the centreline
+	# under it goes in a row either side instead.
+	var rows := [0.0]
+	if ctx.get("weapon") is Dictionary and ctx.weapon["class"] == "hammer" and not core.get("classic", false): rows = [W * 0.3, -W * 0.3]
 	# A height that is inside the nose, to find the nose's outline at.
-	var nose_top: float = J.g(core, "noseTopY", top)
-	var y_nose: float = core.frontBottomY + minf(0.01, (nose_top - core.frontBottomY) * 0.5)
+	var face := _nose_face(core)
+	var nose_top: float = face.yt
+	var y_nose: float = face.yb + minf(0.01, (nose_top - face.yb) * 0.5)
+	# What stands on top keeps behind the step cut for a bar on the nose (and,
+	# on the centreline, behind the post that carries the bar's top bearing).
+	var fore: float = core.chinX - 0.01 if core.get("chinX") != null else INF
+	var fore_mid: float = core.chinX - _in(3) if core.get("chinX") != null else INF
 
 	match type:
 		"forks":
@@ -917,6 +945,8 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 					if not is_nan(e):
 						x0 = e - 0.01
 						x1 = x0 + length
+					# Up to a nose that is off the floor (over an undercutter).
+					back = maxf(rise, face.yb - y0 + 0.012)
 				out.append(_piece("extra:forks:%d" % i, "wedge", "metal", [
 					Vector3(x0, y0, z - w / 2), Vector3(x0, y0, z + w / 2),
 					Vector3(x0, y0 + back, z - w / 2), Vector3(x0, y0 + back, z + w / 2),
@@ -958,7 +988,7 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 			# behind the step cut for the bar, not over it.
 			var h := _in(_n(ex, "heightIn", 6.0))
 			var xp := nose - _in(3)
-			if core.get("cutX") != null: xp = minf(xp, core.cutX - _in(2) - 0.004)
+			if core.get("chinX") != null: xp = minf(xp, core.chinX - _in(2) - 0.004)
 			for sd in sides:
 				var z: float = sd[1] * W * 0.32
 				var seat := _seat(core, xp, z, _in(2), _in(1.5))
@@ -966,7 +996,7 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 				out.append(_piece("extra:uprights:%s" % sd[0], "front", "trim", box_pts(xp, y0 + h / 2 - 0.01, z, _in(2), h / 2, _in(1.5))))
 		"mast":
 			var h := _in(_n(ex, "heightIn", 8.0))
-			var x := _c(_in(_n(ex, "xIn", 0.0)), mid_a + _in(2.5), mid_b - _in(2.5))
+			var x := _c(_in(_n(ex, "xIn", 0.0)), mid_a + _in(2.5), minf(mid_b, fore_mid) - _in(2.5))
 			var seat := _seat(core, x, 0.0, _in(2.5), _in(2.5))
 			var y0: float = seat.lo if seat.ok else top_at(core, x)
 			var y1: float = (seat.c if seat.ok else top_at(core, x)) + h - 0.01
@@ -974,33 +1004,40 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 		"fin":
 			var h := _in(_n(ex, "heightIn", 6.0))
 			var length := L * _c(_n(ex, "length", 0.5), 0.15, 0.9)
-			var x0 := maxf(-L / 2 + L * 0.08, mid_a + 0.01)
-			var x1 := minf(-L / 2 + L * 0.08 + length, mid_b - 0.01)
-			# Its foot is level with the lowest body under it and its tip
-			# clears the highest, so it never hangs over a slope or a step.
-			var lo := INF
-			var hi := -INF
-			for k in 9:
-				var y := surface_at(core, _lerp(x0, x1, k / 8.0), 0.0)
-				if y == -INF: continue
-				lo = minf(lo, y)
-				hi = maxf(hi, y)
-			if hi == -INF:
-				lo = top
-				hi = top
-			var xp := x0 + (x1 - x0) * 0.2
-			out.append(_piece("extra:fin:0", "top", "accent", [
-				Vector3(x0, lo - 0.005, _in(0.5)), Vector3(x0, lo - 0.005, -_in(0.5)),
-				Vector3(x1, lo - 0.005, _in(0.5)), Vector3(x1, lo - 0.005, -_in(0.5)),
-				Vector3(xp, hi + h, _in(0.4)), Vector3(xp, hi + h, -_in(0.4)),
-			]))
+			for j in rows.size():
+				var zr: float = rows[j]
+				var a := _edge_x(core, NAN, zr, -1.0)
+				var b := _edge_x(core, NAN, zr, 1.0)
+				if is_nan(a) or is_nan(b):
+					a = mid_a
+					b = mid_b
+					zr = 0.0
+				var x0 := maxf(-L / 2 + L * 0.08, a + 0.01)
+				var x1 := minf(-L / 2 + L * 0.08 + length, minf(b, fore_mid if zr == 0.0 else fore) - 0.01)
+				# Its foot is level with the lowest body under it and its tip
+				# clears the highest, so it never hangs over a slope or a step.
+				var lo := INF
+				var hi := -INF
+				for k in 9:
+					var y := surface_at(core, _lerp(x0, x1, k / 8.0), zr)
+					if y == -INF: continue
+					lo = minf(lo, y)
+					hi = maxf(hi, y)
+				if hi == -INF:
+					lo = top
+					hi = top
+				var xp := x0 + (x1 - x0) * 0.2
+				out.append(_piece("extra:fin:%d" % j, "top", "accent", [
+					Vector3(x0, lo - 0.005, zr + _in(0.5)), Vector3(x0, lo - 0.005, zr - _in(0.5)),
+					Vector3(x1, lo - 0.005, zr + _in(0.5)), Vector3(x1, lo - 0.005, zr - _in(0.5)),
+					Vector3(xp, hi + h, zr + _in(0.4)), Vector3(xp, hi + h, zr - _in(0.4)),
+				]))
 		"spikes":
 			var n := int(J.rnd(_c(_n(ex, "count", 3.0), 1.0, 6.0)))
 			var length := _in(_n(ex, "lengthIn", 4.0))
 			var r := _in(1.2)
-			# Half way up the nose - or, on a nose too thin to carry them (a
-			# wedge, a dart), out of the slope above it.
-			var want: float = maxf((core.frontBottomY + nose_top) / 2, yb + r + 0.004)
+			# Half way up the nose.
+			var want: float = maxf((face.yb + nose_top) / 2, face.yb + r * 0.6)
 			# Clear of a wedge on the nose, which would swallow them.
 			if wedge != null: want = maxf(want, wedge.y0 + wedge.rise + r * 0.4)
 			want = maxf(yb + r * 0.5, minf(want, top - r * 0.6))
@@ -1009,22 +1046,31 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 			var deck := -INF
 			for z in [0.0, W * 0.2, -W * 0.2]: deck = maxf(deck, surface_at(core, ends[1] - L * 0.12, z))
 			var heights := [want]
-			if deck > -INF and deck - r * 0.6 < want: heights.append(maxf(yb + r * 0.5, deck - r * 0.6))
+			# Under a wedge that would still bury them: sat on the deck's front
+			# lip instead, pointing out over it.
+			var on_deck: bool = wedge != null and deck > -INF and deck - r * 0.6 < want
+			if on_deck: heights.append(deck + r * 0.3)
+			elif deck > -INF and deck - r * 0.6 < want: heights.append(maxf(yb + r * 0.5, deck - r * 0.6))
 			for y in heights:
+				var lip: bool = on_deck and y != want
+				var probe: float = deck - 0.004 if lip else y
 				# On a nose that narrows they come in until they are on its face.
 				var spread := W * 0.38
 				for k in 8:
 					if n == 1: break
-					var e := _edge_x(core, y, spread, 1.0)
+					var e := _edge_x(core, probe, spread, 1.0)
 					if not is_nan(e) and e >= ends[1] - L * 0.06: break
 					spread *= 0.85
+				# Either side of the bearings of a bar on the nose, not in them.
+				if hub > 0.0 and n > 1: spread = maxf(spread, hub + r)
 				for i in n:
 					var z := 0.0 if n == 1 else -spread + (2.0 * spread * i) / (n - 1)
+					if hub > 0.0 and absf(z) < hub + r * 0.6: continue
 					# Each one out of the body in front of it. None where there
 					# is no nose (the slot a disc or drum runs in).
-					var e := _edge_x(core, y, z, 1.0)
+					var e := _edge_x(core, probe, z, 1.0)
 					if is_nan(e) or e < ends[1] - L * 0.45: continue
-					var x0 := e - 0.01
+					var x0 := e - (r * 1.2 if lip else 0.01)
 					out.append(_piece("extra:spikes:%d" % i, "front", "metal", [
 						Vector3(x0, y - r, z - r), Vector3(x0, y + r, z - r),
 						Vector3(x0, y - r, z + r), Vector3(x0, y + r, z + r),
@@ -1046,14 +1092,14 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 		"stack":
 			var h := _in(_n(ex, "heightIn", 7.0))
 			var r := _in(_n(ex, "radiusIn", 2.2))
-			var x := _c(L * 0.22, mid_a + r, mid_b - r)
+			var x := _c(L * 0.22, mid_a + r, minf(mid_b, fore_mid) - r)
 			var seat := _seat(core, x, 0.0, r * 0.7, r * 0.7)
 			var y0: float = (seat.lo if seat.ok else top_at(core, x)) - 0.005
 			var y1: float = (seat.c if seat.ok else top_at(core, x)) + h - 0.005
 			out.append(_piece("extra:stack:0", "top", "trim", cyl_pts(Vector3(x, (y0 + y1) / 2, 0), "y", r, (y1 - y0) / 2, 10)))
 		"eyes":
 			var r := _in(_n(ex, "radiusIn", 2.2))
-			var x := _c(L * 0.18, ends[0] + r, ends[1] - r)
+			var x := _c(L * 0.18, ends[0] + r, minf(ends[1], fore) - r)
 			for sd in sides:
 				var s: float = sd[1]
 				# Where it was asked for, or a little further out or in if the
@@ -1074,7 +1120,7 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 			var R := minf(L, W) * _c(_n(ex, "size", 0.3), 0.1, 0.48)
 			var h := _in(_n(ex, "heightIn", 5.0))
 			var cx := _in(_n(ex, "xIn", 0.0))
-			if mid_b - mid_a > R * 1.2: cx = _c(cx, mid_a + R * 0.6, mid_b - R * 0.6)
+			if mid_b - mid_a > R * 1.2: cx = _c(cx, mid_a + R * 0.6, minf(mid_b - R * 0.6, fore_mid - R))
 			# Its rim goes down to the lowest body under it and its crown
 			# stands over the highest, so it is never sunk in a step or a slope.
 			var lo := INF
@@ -1141,10 +1187,13 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 			var h := _in(_n(ex, "heightIn", 5.0))
 			var w := _in(1.5)
 			for kx in [["F", L * 0.2], ["R", -L * 0.3]]:
-				var x: float = _c(kx[1], ends[0] + w + 0.01, ends[1] - w - 0.01)
+				var x: float = _c(kx[1], ends[0] + w + 0.01, minf(ends[1], fore) - w - 0.01)
 				var half := W * 0.42
-				var reach := half_width_at(core, x, yb + 0.012)
-				if reach > 0.0: half = minf(half, reach * 0.96)
+				var reach := INF
+				for xx in [x - w, x + w]:
+					var hw_here := half_width_at(core, xx, yb + 0.012)
+					if hw_here > 0.0: reach = minf(reach, hw_here)
+				if reach < INF: half = minf(half, reach * 0.96)
 				# On a body that falls away steeply to the sides (a tent) the
 				# hoop comes in to hug the ridge rather than stand as a wall.
 				var ridge := surface_at(core, x, 0.0)
@@ -1160,8 +1209,11 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 				if hi == -INF: hi = top
 				for j in 2:
 					var z := half if j == 0 else -half
-					var y := minf(surface_at(core, x - w, z), surface_at(core, x + w, z))
-					foot[j] = y if y > -INF else hi
+					var y := INF
+					for xx in [x - w, x + w]:
+						var here := surface_at(core, xx, z)
+						if here > -INF: y = minf(y, here)
+					foot[j] = y if y < INF else hi
 				# Over a flat top it is a plain bar; where the body falls away
 				# to the sides its legs splay out to reach it.
 				var flat: bool = hi - minf(foot[0], foot[1]) < 0.006
@@ -1196,7 +1248,7 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 			# A pair of horns off the top front corners, raking up and forward.
 			var h := _in(_n(ex, "heightIn", 7.0))
 			var r := _in(_n(ex, "baseIn", 2.2))
-			var x0 := minf(nose - _in(_n(ex, "backIn", 5.0)), ends[1] - r)
+			var x0 := minf(nose - _in(_n(ex, "backIn", 5.0)), minf(ends[1], fore) - r)
 			var want := W * _c(_n(ex, "spread", 0.32), 0.1, 0.48)
 			# Back along a nose that narrows until it is wide enough for the pair.
 			for k in 8:
@@ -1217,7 +1269,7 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 			var h := _in(_n(ex, "heightIn", 4.0))
 			var b := _in(_n(ex, "baseIn", 3.0))
 			var t := _in(1)
-			var x := _c(L * _c(_n(ex, "x", 0.15), -0.45, 0.45), ends[0] + b / 2, ends[1] - b / 2)
+			var x := _c(L * _c(_n(ex, "x", 0.15), -0.45, 0.45), ends[0] + b / 2, minf(ends[1], fore) - b / 2)
 			var reach := half_width_at(core, x, yb + 0.012)
 			for sd in sides:
 				var s: float = sd[1]
@@ -1236,19 +1288,27 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 			var n := int(J.rnd(_c(_n(ex, "count", 4.0), 1.0, 8.0)))
 			var h: float = _in(_n(ex, "heightIn", 3.5)) + ctx.armour
 			var b := _in(_n(ex, "baseIn", 3.5))
-			var x0 := maxf(-L / 2 + L * 0.15, mid_a + b / 2 + 0.004)
-			var x1 := minf(-L / 2 + L * _c(_n(ex, "length", 0.7), 0.2, 0.95), mid_b - b / 2 - 0.004)
-			if x1 < x0:
-				x0 = (mid_a + mid_b) / 2
-				x1 = x0
-			for i in n:
-				var x := (x0 + x1) / 2 if n == 1 else x0 + ((x1 - x0) * i) / (n - 1)
-				var seat := _seat(core, x, 0.0, b / 2, b / 2)
-				var y0: float = seat.lo if seat.ok else top_at(core, x)
-				var y1: float = seat.c if seat.ok else top_at(core, x)
-				var pts := box_pts(x, y0 - 0.003, 0, b / 2, 0.003, b / 2)
-				pts.append(Vector3(x - b * 0.2, y1 + h, 0))
-				out.append(_piece("extra:spines:%d" % i, "top", role_of.call("accent"), pts))
+			for j in rows.size():
+				var zr: float = rows[j]
+				var ra := _edge_x(core, NAN, zr, -1.0)
+				var rb := _edge_x(core, NAN, zr, 1.0)
+				if is_nan(ra) or is_nan(rb):
+					ra = mid_a
+					rb = mid_b
+					zr = 0.0
+				var x0 := maxf(-L / 2 + L * 0.15, ra + b / 2 + 0.004)
+				var x1 := minf(-L / 2 + L * _c(_n(ex, "length", 0.7), 0.2, 0.95), minf(rb, fore_mid if zr == 0.0 else fore) - b / 2 - 0.004)
+				if x1 < x0:
+					x0 = (ra + rb) / 2
+					x1 = x0
+				for i in n:
+					var x := (x0 + x1) / 2 if n == 1 else x0 + ((x1 - x0) * i) / (n - 1)
+					var seat := _seat(core, x, zr, b / 2, b / 2)
+					var y0: float = seat.lo if seat.ok else top_at(core, x)
+					var y1: float = seat.c if seat.ok else top_at(core, x)
+					var pts := box_pts(x, y0 - 0.003, zr, b / 2, 0.003, b / 2)
+					pts.append(Vector3(x - b * 0.2, y1 + h, zr))
+					out.append(_piece("extra:spines:%d" % (j * n + i), "top", role_of.call("accent"), pts))
 		"bumper":
 			# A rear bumper across the tail, low.
 			var d := _in(_n(ex, "depthIn", 1.5))
@@ -1259,15 +1319,15 @@ static func _extra_pieces(ex: Dictionary, ctx: Dictionary, core: Dictionary) -> 
 			if is_nan(tail): tail = ends[0]
 			# Across a tail that narrows (a round body, a clipped corner) it
 			# comes in until its ends still reach the body.
-			var face := tail
+			var bite := tail
 			for k in 7:
 				var e := _edge_x(core, y, half * 0.85, -1.0)
 				if not is_nan(e) and e <= tail + L * 0.12:
-					face = maxf(tail, e)
+					bite = maxf(tail, e)
 					break
 				half *= 0.82
 			out.append(_piece("extra:bumper:0", "rear", role_of.call("trim"),
-				box_corners(tail - d, yb + 0.012, half, face + 0.01, yb + h, -half)))
+				box_corners(tail - d, yb + 0.012, half, bite + 0.01, yb + h, -half)))
 		_:
 			push_error("%s: unknown body extra \"%s\"" % [assembled.id, type])
 	return out
@@ -1351,7 +1411,14 @@ static func _weapon_geometry(assembled: Dictionary, ctx: Dictionary, core: Dicti
 					Vector3(x1, y0, hw1), Vector3(x1, y0, -hw1), Vector3(x1, y1, hw1), Vector3(x1, y1, -hw1),
 				])
 			var y_top := center.y + half + 0.006
-			out.pieces.append(plate.call("extra:pod:0", y_top, y_top + _in(_n(pod, "thickIn", 1.2))))
+			var y_pod := y_top + _in(_n(pod, "thickIn", 1.2))
+			out.pieces.append(plate.call("extra:pod:0", y_top, y_pod))
+			out.hubHalfW = hw0
+			# Where the body behind the bar is lower than that plate (a cab's
+			# deck, a twin's bridge) a post carries its back end down to it.
+			var under := minf(surface_at(core, x0 - 0.004, hw0 * 0.6), surface_at(core, x0 - 0.004, -hw0 * 0.6))
+			if under > -INF and under < y_top - 0.002:
+				out.pieces.append(_piece("weapon:post", "front", pod_role, box_corners(x0 - _in(1.5), under - 0.006, hw0, x0 + 0.008, y_pod, -hw0)))
 			var y_bot := center.y - half - 0.006
 			var shaft := {"y0": center.y - half - 0.004, "y1": y_top + 0.002, "r": hub_r * 0.42}
 			if mount == "front" and y_bot - (yb + 0.004) > 0.012:

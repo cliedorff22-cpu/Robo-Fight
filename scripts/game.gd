@@ -44,7 +44,10 @@ func load_settings() -> Dictionary:
 		var base := {"shadows": false, "bloom": false, "renderScale": "0.75"}
 		if saved is Dictionary: base.merge(saved, true)
 		saved = base
-	return Settings.from_saved(saved)
+	var out := Settings.from_saved(saved)
+	# The graphics upgrades are the renderer's own settings (render/gfx.gd).
+	Gfx.add_saved(out, saved)
+	return out
 
 func save_settings() -> void:
 	Store.write_json(_settings_key(), settings)
@@ -57,8 +60,7 @@ func set_setting(id: String, value) -> void:
 
 ## The settings that are the whole game's, not one screen's.
 func apply_settings() -> void:
-	var scale := float(settings.get("renderScale", "1"))
-	get_tree().root.scaling_3d_scale = clampf(scale, 0.25, 1.0)
+	Stage.apply_viewport(get_tree().root, settings)
 
 ## Go to the fight (ui/fight_scene.gd reads `req`).
 func start_fight(req: Dictionary) -> void:

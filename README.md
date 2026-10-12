@@ -80,6 +80,48 @@ $G --headless --fixed-fps 10 --path . -s tests/fight_test.gd -- red_id blue_id s
 The career and tournament tests keep their saves apart from yours (they are
 written with a `test.` prefix).
 
+## Graphics
+
+The fight has a set of renderer upgrades, each with its own switch under
+**Settings > Graphics** (they also apply live from the pause screen). They are
+listed in `scripts/render/gfx.gd` and applied in `scripts/render/stage.gd`;
+with every one of them off the picture is the plain one the port started with.
+
+| Setting | What it does | Cost a frame* |
+| --- | --- | --- |
+| Anti-aliasing | MSAA 4x, TAA (the default) or FSR 2 | TAA and MSAA cost the same; FSR 2 at 100% +4.6 ms, at 75% -1 ms |
+| Stage lights with shadows | the overhead rig as spotlights (two of the four cast shadows, from what moves), plus the venue's colour washes | 1.1 ms |
+| Soft shadows | four shadow ranges and a wider filter on the key light | 0.6 ms |
+| Ambient occlusion | contact shading (SSAO, half size) | 0.7 ms |
+| Bounced light | screen-space indirect light - **off by default** | 1.2 ms |
+| Floor reflections | screen-space reflections (half size); the deck gets a smoother finish to show them | 2.0 ms |
+| Arena reflections | a reflection probe of the hall and the box, without the robots | 0.8 ms |
+| Haze and light beams | volumetric fog lit by the rig | 0.3 ms |
+| Broadcast colour grade | a colour cube: deeper blacks, cool shadows, warm highlights | 0.2 ms |
+| Depth of field | only on the intro card and in replays | 2.3 ms, there only |
+
+\* Measured on an Apple M4 at 1920x1080 in the Titan Dome, one of the two
+heaviest venues, as what switching that one setting off saves. With everything
+off a frame takes 9.4 ms (107 frames a second); with the defaults 15.4 ms (66 a
+second there, 71-80 in the smaller venues); with bounced light as well 16.7 ms
+- right on the 60 line, which is why that one starts off.
+
+Two tools measure and picture it, both running the real fight scene (AI
+against AI, a fixed seed) over the whole screen:
+
+```bash
+G=/Applications/Godot.app/Contents/MacOS/Godot
+$G --disable-vsync --path . -s tests/gfx_bench.gd -- /tmp/bench [venue] [layout] [red] [blue] [camera] [seconds] [setting=value ...]
+$G --path . -s tests/gfx_shots.gd -- /tmp/shots [venue] [layout] [red] [blue] [setting=value ...]
+$G --path . -s tests/gfx_settings_test.gd -- /tmp/settings     # the Settings page and the pause screen
+```
+
+`setting=value` (for example `gfxSSR=false gfxAA=msaa`) changes a setting for
+that run only. The benchmark prints the average frame rate, the median frame
+time and the 1% low; add `--rendering-driver vulkan` to get the time spent on
+the graphics card as well, and `--gpu-profile` for where it went. Before and
+after pictures are in `screenshots/graphics/`.
+
 ## Fonts
 
 The design's four fonts are in `fonts/`: Teko (headlines), Barlow Condensed

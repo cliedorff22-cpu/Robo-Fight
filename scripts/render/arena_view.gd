@@ -508,6 +508,10 @@ func set_viewpoint(pos: Vector3) -> void:
 			mi.material_override = _ghost_of(c.solid) if away else null
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if away else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
+## The hazards' moving parts (arms, augers, blades, the pit's lid).
+func moving_parts() -> Array:
+	return _hazard_nodes.values()
+
 ## The walls cut away right now: ["south", "east"].
 func cutaway() -> Array:
 	var out := []

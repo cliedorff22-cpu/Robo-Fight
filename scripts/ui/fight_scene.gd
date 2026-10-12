@@ -185,7 +185,7 @@ func _build() -> void:
 	print("[arena] %s · %s" % [venue_def.name if venue_def is Dictionary else venue, fight.arena.get("name", "")])
 
 	# ---------------------------------------------------------- rendering
-	stage = Stage.new(fight.arena)
+	stage = Stage.new(fight.arena, venue_def)
 	add_child(stage)
 	arena_view = ArenaView.new(fight.arena, fight.world, fight.hazards, mats)
 	add_child(arena_view)
@@ -199,6 +199,8 @@ func _build() -> void:
 		v.sync(u.sim.transform)
 		views[u.id] = v
 	_show_start_damage()
+	# What metal reflects: the hall and the box as built, without the robots.
+	stage.reflect([arena_view, venue_view] if venue_view != null else [arena_view], arena_view.moving_parts())
 	cam = CameraRig.new(fight.arena, fight.bus)
 	add_child(cam)
 	# Sparks, dents and flying parts. Driven entirely off the bus, so the
@@ -287,6 +289,7 @@ func _match_t() -> float:
 ## it changes - from the pause overlay as much as from the menus.
 func apply_settings(changed: String) -> void:
 	var s := Game.settings
+	Stage.apply_viewport(get_viewport(), s)
 	stage.apply_settings(s)
 	hud.set_show_damage(J.truthy(s.get("hudDamage", true)))
 	audio.apply_settings(s)
@@ -605,6 +608,8 @@ func _process(dt: float) -> void:
 	if venue_view != null: venue_view.call("update", 0.0 if still else dt, bout)
 	if not still: effects.update(dt)
 	cam.update(dt, focus, fight.replay.playing, pair)
+	# The lens: soft backgrounds for the intro and the replays, sharp for the fight.
+	stage.focus(cam, focus.origin, fight.replay.playing or bout.phase == Match.IDLE or bout.phase == Match.COUNTDOWN, dt)
 	# A camera outside the box looks through the near walls: they clear out of its way.
 	arena_view.set_viewpoint(cam.global_position)
 	_sound_frame(0.0 if (fight.replay.playing or still) else dt)

@@ -16,7 +16,9 @@ extends Node3D
 const SEAT_PITCH_M := 0.62            # one fan per this much row
 # Sides of the box: the stands are built for the south (+Z) side and turned.
 const SIDES := {"s": 0.0, "e": PI / 2.0, "n": PI, "w": -PI / 2.0}
-const CROWD_SHADER := "shader_type spatial;\nuniform float u_time = 0.0;\nuniform float u_excite = 0.4;\nuniform float u_glow = 0.14;\nvarying vec3 tint;\nvoid vertex() {\n\tfloat phase = INSTANCE_CUSTOM.x;\n\tfloat gain = INSTANCE_CUSTOM.y;\n\tfloat ex = clamp(u_excite * gain, 0.0, 1.6);\n\tfloat bob = sin(u_time * (1.6 + gain) + phase) * 0.025 * (0.5 + ex);\n\tfloat jump = max(0.0, sin(u_time * 8.5 + phase * 3.0)) * 0.24 * smoothstep(0.75, 1.3, ex);\n\tVERTEX.y += bob + jump + UV.x * 0.52 * smoothstep(0.45 + 0.35 * fract(phase), 1.0, ex);\n\ttint = COLOR.rgb;\n}\nvoid fragment() {\n\tALBEDO = tint;\n\tROUGHNESS = 0.92;\n\tMETALLIC = 0.0;\n\tEMISSION = tint * u_glow;\n}\n"
+# The crowd looks up no shadows: nothing in the hall casts one as far as the
+# stands, and asking on every fan's pixels costs frame time.
+const CROWD_SHADER := "shader_type spatial;\nrender_mode shadows_disabled;\nuniform float u_time = 0.0;\nuniform float u_excite = 0.4;\nuniform float u_glow = 0.14;\nvarying vec3 tint;\nvoid vertex() {\n\tfloat phase = INSTANCE_CUSTOM.x;\n\tfloat gain = INSTANCE_CUSTOM.y;\n\tfloat ex = clamp(u_excite * gain, 0.0, 1.6);\n\tfloat bob = sin(u_time * (1.6 + gain) + phase) * 0.025 * (0.5 + ex);\n\tfloat jump = max(0.0, sin(u_time * 8.5 + phase * 3.0)) * 0.24 * smoothstep(0.75, 1.3, ex);\n\tVERTEX.y += bob + jump + UV.x * 0.52 * smoothstep(0.45 + 0.35 * fract(phase), 1.0, ex);\n\ttint = COLOR.rgb;\n}\nvoid fragment() {\n\tALBEDO = tint;\n\tROUGHNESS = 0.92;\n\tMETALLIC = 0.0;\n\tEMISSION = tint * u_glow;\n}\n"
 
 var venue: Dictionary
 

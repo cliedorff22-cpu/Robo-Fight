@@ -1,6 +1,6 @@
 ## settings_panel.gd - one settings panel, used on the main menu, in the
 ## career and in the fight's pause overlay. It changes the saved settings
-## (logic/settings.gd says what they are) and tells its host what changed, so
+## (logic/settings.gd says what they are, render/gfx.gd adds the graphics upgrades) and tells its host what changed, so
 ## the host can apply it on the spot.
 class_name SettingsPanel
 extends VBoxContainer
@@ -18,7 +18,7 @@ func _init(groups = null, note := "", changed: Callable = Callable()) -> void:
 	add_theme_constant_override("separation", 0)
 	if note != "": add_child(UI.label(note, {"kind": "cond", "size": 13, "weight": 500, "color": UI.DIM}))
 	var last_group := ""
-	for x in Settings.SETTINGS:
+	for x in Gfx.all_settings():
 		if _groups != null and not _groups.has(x.group): continue
 		if x.group != last_group:
 			last_group = x.group

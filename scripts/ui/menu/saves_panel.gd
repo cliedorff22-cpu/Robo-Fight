@@ -39,7 +39,10 @@ static func import_backup(b: Dictionary, career_slot := 0) -> Dictionary:
 	if b.get("hall") != null: Store.write_json(Store.HALL, b.hall)
 	if b.get("tournament") != null: Store.write_json(Store.TOURNAMENT, b.tournament)
 	if b.get("settings") != null:
+		# The graphics upgrades are this computer's: a backup does not carry them.
+		var mine := Game.settings
 		Game.settings = b.settings
+		Gfx.add_saved(Game.settings, mine)
 		Game.save_settings()
 	# A hand-off from another computer means nothing here.
 	Game.result = null

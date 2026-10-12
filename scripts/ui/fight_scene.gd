@@ -298,6 +298,7 @@ func apply_settings(changed: String) -> void:
 	var s := Game.settings
 	Stage.apply_viewport(get_viewport(), s)
 	Mats.apply_settings(s)
+	Parts.detailed = Gfx.on(s, "gfxModels")
 	stage.apply_settings(s)
 	effects.apply_settings(s)
 	marks.apply_settings(s)

@@ -38,6 +38,8 @@ const SETTINGS := [
 		"help": "A damaged panel's paint chips back to bare steel and soots up, is scraped bright where it was hit, and the scrape glows for a second."},
 	{"id": "gfxTextures", "group": "Graphics", "label": "Scanned surfaces", "type": "bool", "default": true,
 		"help": "Steel, rubber, plastic and concrete photographed from the real thing, in place of the drawn textures: the deck's scuffed plate, brushed weapon steel, tyre rubber."},
+	{"id": "gfxModels", "group": "Graphics", "label": "Detailed models", "type": "bool", "default": true,
+		"help": "Wheels as models - lugged tyres on machined rims - and the hall dressed with its lighting truss, lamps and pit equipment. Robots change from the next fight."},
 	{"id": "gfxBlur", "group": "Graphics", "label": "Spinner blur", "type": "bool", "default": true,
 		"help": "A weapon at speed is drawn as the blur a camera sees - solid where it fills the turn, see-through where the blades sweep - instead of a bar turning slowly."},
 ]

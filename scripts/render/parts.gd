@@ -18,6 +18,9 @@ class_name Parts
 ## (the phone build uses fewer).
 const BODY_RADIUS := 0.022
 static var mobile := false
+## Graphics tier 3: wheels (and the like) as detailed models. Read when a
+## robot is built.
+static var detailed := true
 
 ## Segments for a round part: more on desktop.
 static func seg(n: int) -> int:
@@ -74,6 +77,7 @@ static func bolt_ring(n: int, rad: float, y: float, head: float, up := 1.0, phas
 ## A tyre with rounded shoulders on a hub with five spokes, axle along Z.
 ## Returns { tyre, hub, spokes, cap } geometries shared by every wheel.
 static func wheel_geometries(r: float, w: float) -> Dictionary:
+	if detailed and not mobile: return _wheel_detailed(r, w)
 	var ri := r * 0.62
 	var c := minf(w * 0.32, r * 0.24)
 	var prof := [Vector2(ri, -w / 2.0 * 0.94)]
@@ -95,6 +99,72 @@ static func wheel_geometries(r: float, w: float) -> Dictionary:
 			spokes.append(Geo.box(ri * 0.82, ri * 0.2, 0.006).translate(ri * 0.41, 0, z).rotate_z((k / 5.0) * TAU))
 		spokes.append(Geo.torus(ri * 0.9, ri * 0.07, 8, seg(24)).translate(0, 0, z))
 		caps.append(Geo.cylinder(ri * 0.26, ri * 0.3, 0.014, 6).rotate_x(PI / 2.0).translate(0, 0, s * (w * 0.42 + 0.007)))
+	return {"tyre": tyre, "hub": hub, "spokes": spokes, "cap": caps}
+
+static func _circle(r: float, n: int, cx := 0.0, cy := 0.0) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in n:
+		var a := (float(i) / n) * TAU
+		out.append(Vector2(cx + cos(a) * r, cy + sin(a) * r))
+	return out
+
+## The wheel as a model (graphics tier 3): a knobbly tyre - two staggered rows
+## of lugs set in a chevron, wrapping the shoulders - on a machined rim with
+## lips, a five-hole face plate over a dark well, a boss and its wheel nuts.
+## The same four parts as the plain wheel, and nothing reaches past `r`.
+static func _wheel_detailed(r: float, w: float) -> Dictionary:
+	var ri := r * 0.62
+	var lug := clampf(r * 0.075, 0.003, 0.008)
+	var rc := r - lug                      # the carcass the lugs stand on
+	var c := minf(w * 0.32, rc * 0.24)
+	var prof := [Vector2(ri, -w / 2.0 * 0.94)]
+	for i in range(6):
+		var a := -PI / 2.0 + (i / 5.0) * (PI / 2.0)
+		prof.append(Vector2(rc - c + cos(a) * c, -w / 2.0 + c + sin(a) * c))
+	for i in range(6):
+		var a := (i / 5.0) * (PI / 2.0)
+		prof.append(Vector2(rc - c + cos(a) * c, w / 2.0 - c + sin(a) * c))
+	prof.append(Vector2(ri, w / 2.0 * 0.94))
+	var tyre := Geo.lathe(prof, seg(32)).rotate_x(PI / 2.0)
+	var n := clampi(int(round(TAU * r / 0.026)), 14, 40)
+	var pitch := TAU / n
+	var across := w * 0.5 - 0.0015         # a lug's reach from the middle groove to the tyre's edge
+	var along := 2.0 * r * sin(pitch * 0.5) * 0.6
+	var deep := lug + c * 0.55             # down into the carcass, so the shoulder never leaves a gap under it
+	for row in 2:
+		var side := -1.0 if row == 0 else 1.0
+		for i in n:
+			var block := Geo.box(along, deep, across * 0.9).rotate_y(side * 0.3)
+			block.translate(0, r - deep / 2.0, side * (across * 0.5 + 0.0015))
+			tyre.append(block.tile_uvs(8.0).rotate_z((i + 0.5 * row) * pitch))
+	# Nothing of a lug stands outside the wheel's radius or its width.
+	for i in tyre.pos.size():
+		var p := tyre.pos[i]
+		var flat := Vector2(p.x, p.y)
+		if flat.length() > r: flat = flat.normalized() * r
+		tyre.pos[i] = Vector3(flat.x, flat.y, clampf(p.z, -w / 2.0, w / 2.0))
+
+	var rim := Geo.ring_extrude(_circle(ri * 1.02, seg(28)), _circle(ri * 0.9, seg(28)), w * 0.86)
+	var well_z := w * 0.26
+	var hub := Geo.new()
+	hub.append(rim)
+	hub.append(cyl(ri * 0.34, ri * 0.34, w * 0.8, 16).rotate_x(PI / 2.0))
+	var spokes := Geo.new()                # the dark parts: the well behind the plate, the wheel nuts
+	spokes.append(Geo.cylinder(ri * 0.91, ri * 0.91, well_z * 2.0, seg(24)).rotate_x(PI / 2.0))
+	var caps := Geo.new()
+	var holes := []
+	for k in 5:
+		var a := (k / 5.0) * TAU + PI / 5.0
+		var hole := _circle(ri * 0.2, 12, cos(a) * ri * 0.6, sin(a) * ri * 0.6)
+		hole.reverse()                     # holes wind the other way
+		holes.append(hole)
+	for s in [-1.0, 1.0]:
+		var z: float = s * (well_z + 0.006)
+		hub.append(Geo.extrude(_circle(ri * 0.92, seg(28)), 0.005, 0.002, holes).translate(0, 0, z))
+		for k in 5:
+			var a := (k / 5.0) * TAU
+			spokes.append(Geo.cylinder(ri * 0.055, ri * 0.055, 0.006, 6).rotate_x(PI / 2.0).translate(cos(a) * ri * 0.24, sin(a) * ri * 0.24, s * (w * 0.4 + 0.002)))
+		caps.append(Geo.cylinder(ri * 0.13, ri * 0.15, 0.008, 6).rotate_x(PI / 2.0).translate(0, 0, s * (w * 0.4 + 0.004)))
 	return {"tyre": tyre, "hub": hub, "spokes": spokes, "cap": caps}
 
 # ---------------------------------------------------------------- rotors

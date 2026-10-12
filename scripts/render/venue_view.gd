@@ -147,9 +147,15 @@ func _build_hall(b: ArenaView.Batch, hall: Dictionary) -> void:
 	roof.quad(Vector3(-_hx, y1, -_hz), Vector3(_hx, y1, -_hz), Vector3(_hx, y1, _hz), Vector3(-_hx, y1, _hz), dn, dn, dn, dn)
 	b.add(roof, _mat(_col(hall.get("roof")), 0.95, 0.0))
 	var floor_c := _col(hall.get("floor"))
-	b.add(_flat(_hx * 2.0, _hz * 2.0, 0, _deck_bottom - 0.005, 0), _mat(floor_c, 0.85, 0.1))
+	# Poured concrete (the scanned sets, tinted to the venue's own floor
+	# colour; the flat colour where those are off), 2.5 m to a repeat.
+	var mats := Mats.shared()
+	var walk_c := Color(minf(1.0, floor_c.r * 1.5), minf(1.0, floor_c.g * 1.5), minf(1.0, floor_c.b * 1.5))
+	b.add(_flat(_hx * 2.0, _hz * 2.0, 0, _deck_bottom - 0.005, 0).tile_uvs(1.0),
+		mats.surface("concrete_dark", 0.4, Color(floor_c.r / 0.3, floor_c.g / 0.3, floor_c.b / 0.3), floor_c, 0.85, 0.1))
 	# The walkway round the box, a shade lighter, with a painted safety line.
-	b.add(_flat(_half_x * 2.0 + 5.0, _half_z * 2.0 + 5.0, 0, _deck_bottom, 0), _mat(Color(minf(1.0, floor_c.r * 1.5), minf(1.0, floor_c.g * 1.5), minf(1.0, floor_c.b * 1.5)), 0.8, 0.0))
+	b.add(_flat(_half_x * 2.0 + 5.0, _half_z * 2.0 + 5.0, 0, _deck_bottom, 0).tile_uvs(1.0),
+		mats.surface("concrete", 0.4, Color(walk_c.r / 0.75, walk_c.g / 0.75, walk_c.b / 0.75), walk_c, 0.8, 0.0))
 	var line := _mat(Color.html("#d8b21a"), 0.7, 0.0)
 	for q in [[_half_x * 2.0 + 5.0, 0.12, 0.0, -_half_z - 2.5], [_half_x * 2.0 + 5.0, 0.12, 0.0, _half_z + 2.5],
 			[0.12, _half_z * 2.0 + 5.0, -_half_x - 2.5, 0.0], [0.12, _half_z * 2.0 + 5.0, _half_x + 2.5, 0.0]]:

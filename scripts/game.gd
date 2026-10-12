@@ -62,6 +62,7 @@ func set_setting(id: String, value) -> void:
 func apply_settings() -> void:
 	Stage.apply_viewport(get_tree().root, settings)
 	Mats.apply_settings(settings)
+	Parts.detailed = Gfx.on(settings, "gfxModels")
 	# How a robot is drawn, in the workshop as in the fight.
 	RobotFx.apply_settings(settings)
 

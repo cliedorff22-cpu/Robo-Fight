@@ -78,6 +78,7 @@ func _init(venue_def: Dictionary, arena: Dictionary, bus: Bus = null, decor_seed
 	_build_banners(b)
 	_build_extras(b)
 	b.commit(self, false)
+	if Parts.detailed: _build_pit_gear()
 	if bus != null:
 		_offs.append(bus.on(Bus.HIT, func(e):
 			var big := 1.1 if e.severity == "catastrophic" else (0.75 if e.severity == "heavy" else (0.35 if e.severity == "hit" else 0.15))
@@ -351,8 +352,13 @@ func _build_lights(b: ArenaView.Batch) -> void:
 						b.add(_box(0.01, _hh - tube_y, 0.01, x + dx, tube_y + (_hh - tube_y) / 2.0, z), truss)
 				x += 4.2
 		return
-	for q in [[ring * 2.0, 0.35, 0.0, -ring], [ring * 2.0, 0.35, 0.0, ring], [0.35, ring * 2.0, -ring, 0.0], [0.35, ring * 2.0, ring, 0.0]]:
-		b.add(_box(q[0], 0.35, q[1], q[2], truss_y, q[3]), truss)
+	if Parts.detailed:
+		# The real thing: box truss, four chords laced with diagonals.
+		for q in [[-1, -1, 1, -1], [-1, 1, 1, 1], [-1, -1, -1, 1], [1, -1, 1, 1]]:
+			b.add(_truss(Vector3(q[0] * ring, truss_y, q[1] * ring), Vector3(q[2] * ring, truss_y, q[3] * ring), 0.35), truss)
+	else:
+		for q in [[ring * 2.0, 0.35, 0.0, -ring], [ring * 2.0, 0.35, 0.0, ring], [0.35, ring * 2.0, -ring, 0.0], [0.35, ring * 2.0, ring, 0.0]]:
+			b.add(_box(q[0], 0.35, q[1], q[2], truss_y, q[3]), truss)
 	# Chains up to the roof at the corners.
 	for q in [[-ring, -ring], [ring, -ring], [-ring, ring], [ring, ring]]:
 		b.add(_box(0.05, _hh - truss_y, 0.05, q[0], truss_y + (_hh - truss_y) / 2.0, q[1]), truss)
@@ -372,6 +378,7 @@ func _build_lights(b: ArenaView.Batch) -> void:
 			var basis := Basis(xb, yb, xb.cross(yb))
 			var xf := Transform3D(basis, at)
 			b.add(Geo.cylinder(0.22, 0.26, 0.5, 12).apply(xf), truss)
+			if Parts.detailed: b.add(_lamp_fittings(xf, Vector3(at.x, truss_y - 0.17, at.z)), truss)
 			lamps.append(Geo.cylinder(0.2, 0.2, 0.02, 14).translate(0, -0.26, 0).apply(xf))
 			if J.truthy(L.get("beams")):
 				if bi % 2 == 0:
@@ -385,6 +392,45 @@ func _build_lights(b: ArenaView.Batch) -> void:
 					_beams.append(beam)
 				bi += 1
 	add_child(lamps.instance(_lamp_mat, false))
+
+# A run of box truss from `a` to `b`, `size` square: a chord along each
+# corner and a zigzag of lacing on all four faces.
+static func _truss(a: Vector3, b: Vector3, size: float) -> Geo:
+	var g := Geo.new()
+	var dir := (b - a).normalized()
+	var side := dir.cross(Vector3.UP).normalized() * (size / 2.0)
+	var up := Vector3.UP * (size / 2.0)
+	var corners := [side + up, side - up, -side - up, -side + up]
+	for c in corners: g.append(RobotView._beam(a + c, b + c, 0.05, 0.05))
+	var bays := maxi(1, int(round(a.distance_to(b) / size)))
+	for i in bays:
+		var p := a.lerp(b, float(i) / bays)
+		var q := a.lerp(b, float(i + 1) / bays)
+		for k in 4:
+			var c0: Vector3 = corners[k]
+			var c1: Vector3 = corners[(k + 1) % 4]
+			# Each face's lacing leans the other way from bay to bay.
+			if i % 2 == 0: g.append(RobotView._beam(p + c0, q + c1, 0.025, 0.025))
+			else: g.append(RobotView._beam(p + c1, q + c0, 0.025, 0.025))
+	return g
+
+# What makes a can a stage lamp: cooling fins and a cap behind, barn doors
+# round the lens, and the yoke it hangs by, with a clamp up to the truss at
+# `hang`. `xf` is the lamp's frame: it shines along -Y.
+static func _lamp_fittings(xf: Transform3D, hang: Vector3) -> Geo:
+	var g := Geo.new()
+	for y in [0.06, 0.13, 0.2]: g.append(Geo.cylinder(0.275, 0.275, 0.014, 12).translate(0, y, 0))
+	g.append(Geo.cylinder(0.16, 0.2, 0.09, 12).translate(0, 0.29, 0))
+	# Barn doors, each hinged on the rim and swung a little open.
+	for k in 4:
+		var door := Geo.box(0.34, 0.2, 0.012).translate(0, -0.1, 0).rotate_x(0.45).translate(0, -0.25, -0.25)
+		g.append(door.rotate_y(k * PI / 2.0))
+	# The yoke: an arm down each side from a bar across the back.
+	for sx in [-0.31, 0.31]: g.append(Geo.box(0.025, 0.46, 0.07).translate(sx, 0.21, 0))
+	g.append(Geo.box(0.645, 0.025, 0.07).translate(0, 0.44, 0))
+	g.apply(xf)
+	g.append(RobotView._beam(xf * Vector3(0, 0.44, 0), hang, 0.05, 0.05))
+	return g
 
 # A light beam: an open cone, additive, opening along -Z from its apex (so
 # look_at aims it). Brightest where you look through the middle of it and
@@ -524,6 +570,60 @@ func _build_banners(b: ArenaView.Batch) -> void:
 			b.add(g.translate(x, top.v1 + 2.6, top.u1 + 0.05 + off).apply(turn), _mat(_col(cols[i % cols.size()]), 0.8, 0.0, 0.0, null, true))
 			x += 4.5
 			i += 1
+
+# ---------------------------------------------------------------- pit gear
+# What stands round a real box between the fights: crew stations on the
+# walkway outside the safety line - a tool cart or chest, a barrel, a sack
+# truck, an extinguisher - and gas bottles and shelving in the free corners.
+# Authored models (CC0, Poly Haven - see assets/CREDITS.md), graphics tier 3.
+
+const PROP_PATH := "res://assets/models/%s/%s_1k.gltf"
+static var _props := {}
+
+static func _prop(id: String) -> Node3D:
+	if not _props.has(id):
+		var path := PROP_PATH % [id, id]
+		_props[id] = load(path) if ResourceLoader.exists(path) else null
+	var scene: PackedScene = _props[id]
+	return scene.instantiate() if scene != null else null
+
+# One prop standing on the hall floor at (x, z), turned `yaw`.
+func _place(id: String, x: float, z: float, yaw: float) -> void:
+	var n := _prop(id)
+	if n == null: return
+	n.transform = Transform3D(Basis(Vector3.UP, yaw), Vector3(x, _deck_bottom, z))
+	# Dressing, out in the dim of the hall: it costs no shadow pass.
+	for mi in n.find_children("*", "GeometryInstance3D", true, false):
+		(mi as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(n)
+
+func _build_pit_gear() -> void:
+	# A station either side of the middle of each wall, backed up to where
+	# the stands (or the hall) begin and facing the box.
+	var kits := [
+		[["tool_cart", 0.0, 0.0, 0.0], ["Barrel_01", 1.15, 0.1, 0.7], ["korean_fire_extinguisher_01", -0.95, -0.25, 0.3]],
+		[["metal_tool_chest", 0.0, 0.0, 0.0], ["hand_truck", 1.0, 0.05, 2.6], ["korean_fire_extinguisher_01", -0.7, -0.2, -0.4]],
+	]
+	var k := 0
+	for side in ["s", "e", "n", "w"]:
+		var turn := Basis(Vector3.UP, SIDES[side])
+		var half: float = _half_z if side == "s" or side == "n" else _half_x
+		var along: float = _half_x if side == "s" or side == "n" else _half_z
+		for f in [-0.62, 0.62]:
+			var kit: Array = kits[k % kits.size()]
+			k += 1
+			for q in kit:
+				# In the side's own frame: x along the wall, z out from the box.
+				var p: Vector3 = turn * Vector3(f * along + q[1], 0, half + 3.3 + q[2])
+				_place(q[0], p.x, p.z, SIDES[side] + PI + q[3] + _rng.float_range(-0.2, 0.2))
+	# The free corners: gas for the flame jets, and a rack of spares.
+	for c in [[-1.0, -1.0], [1.0, -1.0], [-1.0, 1.0], [1.0, 1.0]]:
+		var at := Vector2(c[0] * (_half_x + 2.9), c[1] * (_half_z + 2.9))
+		var yaw := atan2(-at.x, -at.y)
+		if c[0] * c[1] > 0.0:
+			_place("steel_frame_shelves_01", at.x, at.y, yaw)
+		else:
+			for i in 3: _place("propane_tank", at.x + (i - 1) * 0.42 * c[1], at.y + (i - 1) * 0.42 * c[0], yaw + i * 1.3)
 
 # ---------------------------------------------------------------- extras
 

@@ -19,3 +19,18 @@ and roughness maps are kept, renamed `color.jpg`, `normal.jpg`, `rough.jpg`.
 | `plastic` | Plastic013A | UHMW panels |
 | `concrete_dark` | Concrete030 | the hall floor |
 | `concrete` | Concrete034 | the walkway round the box |
+
+## Models - Poly Haven (https://polyhaven.com), CC0
+
+Downloaded 2026-10-12 as glTF with 1K textures, unchanged. They dress the
+walkway round the box (`VenueView._build_pit_gear`).
+
+| Folder in `assets/models/` | Poly Haven asset |
+| --- | --- |
+| `tool_cart` | Tool Cart |
+| `metal_tool_chest` | Metal Tool Chest |
+| `Barrel_01` | Barrel 01 |
+| `hand_truck` | Hand Truck |
+| `korean_fire_extinguisher_01` | Korean Fire Extinguisher 01 |
+| `propane_tank` | Propane Tank |
+| `steel_frame_shelves_01` | Steel Frame Shelves 01 |

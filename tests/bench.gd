@@ -1,0 +1,21 @@
+extends SceneTree
+func _init() -> void:
+	var reg := Registry.load_all()
+	var bots := reg.all_robots()
+	var t := Time.get_ticks_usec()
+	var asm := []
+	for i in 600: asm.append(Build.assemble_robot(reg, bots[i % bots.size()]))
+	print("assemble: %.3f ms each" % ((Time.get_ticks_usec() - t) / 600000.0))
+	t = Time.get_ticks_usec()
+	for i in 600: Shape.build_shape(asm[i])
+	print("shape:    %.3f ms each" % ((Time.get_ticks_usec() - t) / 600000.0))
+	t = Time.get_ticks_usec()
+	for i in 6000: Condition.effective_stats(asm[i % 600], reg.rules)
+	print("effstats: %.4f ms each" % ((Time.get_ticks_usec() - t) / 6000000.0))
+	t = Time.get_ticks_usec()
+	for i in 600: AI.ai_profile(bots[i % bots.size()])
+	print("profile:  %.4f ms each" % ((Time.get_ticks_usec() - t) / 600000.0))
+	t = Time.get_ticks_usec()
+	for i in 300: Resolver.resolve_fight(reg, bots[i % bots.size()], bots[(i * 7 + 3) % bots.size()], {"seed": i})
+	print("fight:    %.3f ms each" % ((Time.get_ticks_usec() - t) / 300000.0))
+	quit()

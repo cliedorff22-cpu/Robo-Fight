@@ -1,0 +1,30 @@
+extends SceneTree
+func _init() -> void:
+	var reg := Registry.load_all()
+	var bots := reg.all_robots()
+	for i in 122: Resolver.resolve_fight(reg, bots[i], bots[(i * 7 + 3) % bots.size()], {"seed": i})
+	var k := Resolver.rules_of(reg)
+	var t := Time.get_ticks_usec()
+	for i in 2000: Resolver._make_side(reg, bots[i % bots.size()], null, k)
+	print("make_side: %.1f us" % ((Time.get_ticks_usec() - t) / 2000.0))
+	t = Time.get_ticks_usec()
+	for i in 2000: Build.assemble_robot(reg, bots[i % bots.size()])
+	print("  assemble: %.1f us" % ((Time.get_ticks_usec() - t) / 2000.0))
+	t = Time.get_ticks_usec()
+	for i in 2000: AI.ai_profile(bots[i % bots.size()])
+	print("  profile: %.1f us" % ((Time.get_ticks_usec() - t) / 2000.0))
+	var asm := []
+	for i in 122: asm.append(Build.assemble_robot(reg, bots[i]))
+	t = Time.get_ticks_usec()
+	for i in 2000: Resolver.invertible_of(reg, asm[i % 122])
+	print("  invertible: %.1f us" % ((Time.get_ticks_usec() - t) / 2000.0))
+	t = Time.get_ticks_usec()
+	for i in 2000:
+		var u := Resolver.RUnit.new()
+		u.a = asm[i % 122]
+		u.setup(k)
+	print("  unit setup: %.1f us" % ((Time.get_ticks_usec() - t) / 2000.0))
+	t = Time.get_ticks_usec()
+	for i in 2000: Rng.hash_seed("resolve:%s:%s:%s" % [J.s(i), "grim_reaper", "coldsnap"])
+	print("hash_seed: %.1f us" % ((Time.get_ticks_usec() - t) / 2000.0))
+	quit()

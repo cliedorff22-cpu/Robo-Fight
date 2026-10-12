@@ -1,0 +1,5 @@
+# Godot's own cache (rebuilt on import)
+.godot/
+*.translation
+export_presets.cfg
+.DS_Store

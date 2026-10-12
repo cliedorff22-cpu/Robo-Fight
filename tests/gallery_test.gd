@@ -189,40 +189,44 @@ const PAGE := """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ROBO LEAGUE - Robot Gallery</title>
+<title>Robo League Robot Gallery</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
 <style>
-  :root { --bg: #14161b; --bg2: #1d2024; --line: #2e333b; --text: #f1efe8; --dim: #8b8f96; --accent: #ffc81e; --hot: #ff7a1a; }
+  /* One dark look, the game's own: a sticky bar of filters over a grid of robot cards. */
+  :root { color-scheme: dark; --bg: #14161b; --bg2: #1d2024; --ink: #14161b; --btn: #2a2e34; --line: #2e333b; --text: #f1efe8; --dim: #8b8f96; --accent: #ffc81e; --hot: #ff7a1a;
+    --display: "Teko", "Barlow Condensed", "Arial Narrow", Impact, sans-serif; --cond: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace; }
+  [hidden] { display: none !important; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif; }
-  header { position: sticky; top: 0; z-index: 2; background: var(--bg2); border-bottom: 4px solid var(--accent); padding: 12px 16px; }
-  h1 { margin: 0 0 8px; font-size: 26px; font-style: italic; letter-spacing: 0.06em; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--cond); font-weight: 500; }
+  header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; background: var(--bg2); border-bottom: 4px solid var(--accent); padding: 12px 16px; }
+  h1 { margin: 0 0 6px; font-family: var(--display); font-size: 32px; font-weight: 600; font-style: italic; letter-spacing: 0.06em; line-height: 1; text-wrap: balance; }
   h1 span { color: var(--accent); }
-  h1 small { font-size: 13px; font-style: normal; font-weight: 400; color: var(--dim); letter-spacing: 0.08em; margin-left: 10px; }
+  h1 small { font-family: var(--cond); font-size: 13px; font-style: normal; font-weight: 400; color: var(--dim); letter-spacing: 0.08em; margin-left: 10px; }
   #bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  #bar button { font: inherit; font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text); background: #2a2e34; border: 1px solid var(--line); padding: 6px 12px; cursor: pointer; }
-  #bar button.on { background: var(--accent); border-color: var(--accent); color: #14161b; }
-  #bar input, #bar select { font: inherit; font-size: 15px; color: var(--text); background: #14161b; border: 1px solid var(--line); padding: 6px 10px; }
+  #bar button { font: inherit; font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text); background: var(--btn); border: 1px solid var(--line); padding: 6px 12px; cursor: pointer; }
+  #bar button.on { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+  #bar input, #bar select { font: inherit; font-size: 15px; color: var(--text); background: var(--ink); border: 1px solid var(--line); padding: 6px 10px; }
   #bar input { flex: 1 1 160px; min-width: 120px; }
   #count { color: var(--dim); font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
-  main { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  main { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 14px; }
   h2 { grid-column: 1 / -1; margin: 10px 0 0; font-size: 15px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--hot); }
   .card { background: var(--bg2); border: 1px solid var(--line); }
-  .card img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; cursor: zoom-in; }
+  .card img { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 3 / 2; cursor: zoom-in; }
   .stripe { height: 5px; }
   .body { padding: 10px 12px 12px; }
-  .name { font-size: 26px; font-weight: 700; font-style: italic; text-transform: uppercase; line-height: 1; }
-  .name small { font-size: 14px; font-style: normal; color: var(--dim); margin-left: 6px; }
+  .name { font-family: var(--display); font-size: 32px; font-weight: 600; font-style: italic; text-transform: uppercase; line-height: 0.95; }
+  .name small { font-family: var(--cond); font-size: 14px; font-style: normal; color: var(--dim); margin-left: 6px; }
   .team { font-size: 14px; color: var(--dim); letter-spacing: 0.06em; text-transform: uppercase; margin: 3px 0 6px; }
   .weapon { font-size: 16px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; }
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; }
-  .stats div { background: #14161b; padding: 5px 4px; text-align: center; }
-  .stats b { display: block; font-size: 17px; font-family: ui-monospace, Menlo, monospace; }
+  .stats div { background: var(--ink); padding: 5px 4px; text-align: center; }
+  .stats b { display: block; font-size: 16px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
   .stats span { font-size: 11px; color: var(--dim); letter-spacing: 0.1em; text-transform: uppercase; }
   .tags { margin-top: 8px; font-size: 13px; color: var(--dim); }
   .tags i { font-style: normal; border: 1px solid var(--line); padding: 1px 7px; margin-right: 4px; display: inline-block; margin-bottom: 3px; }
-  #zoom { position: fixed; inset: 0; z-index: 5; background: rgba(0, 0, 0, 0.9); display: none; align-items: center; justify-content: center; cursor: zoom-out; }
+  #zoom { position: fixed; inset: 0; z-index: 5; background: rgba(0, 0, 0, 0.9); display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
   #zoom img { max-width: 96vw; max-height: 96vh; }
-  @media (max-width: 480px) { main { padding: 10px; grid-template-columns: 1fr; } h1 small { display: block; margin: 2px 0 0; } }
+  @media (max-width: 480px) { h1 small { display: block; margin: 2px 0 0; } }
 </style>
 </head>
 <body>
@@ -231,7 +235,7 @@ const PAGE := """<!DOCTYPE html>
   <div id="bar"></div>
 </header>
 <main id="grid"></main>
-<div id="zoom"><img alt=""></div>
+<div id="zoom" hidden><img alt=""></div>
 <script>
 const ROBOTS = /*DATA*/;
 const LEAGUES = /*LEAGUES*/;
@@ -299,9 +303,9 @@ function draw() {
   document.getElementById("count").textContent = list.length + " of " + ROBOTS.length + " robots";
 }
 const zoom = document.getElementById("zoom");
-grid.addEventListener("click", e => { if (e.target.tagName === "IMG") { zoom.firstChild.src = e.target.src; zoom.style.display = "flex"; } });
-zoom.onclick = () => { zoom.style.display = "none"; };
-document.addEventListener("keydown", e => { if (e.key === "Escape") zoom.style.display = "none"; });
+grid.addEventListener("click", e => { if (e.target.tagName === "IMG") { zoom.firstChild.src = e.target.src; zoom.hidden = false; } });
+zoom.onclick = () => { zoom.hidden = true; };
+document.addEventListener("keydown", e => { if (e.key === "Escape") zoom.hidden = true; });
 build();
 </script>
 </body>

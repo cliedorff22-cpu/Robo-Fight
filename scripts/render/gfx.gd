@@ -30,6 +30,8 @@ const SETTINGS := [
 	{"id": "gfxDOF", "group": "Graphics", "label": "Depth of field in intros and replays", "type": "bool", "default": true},
 	{"id": "gfxParticles", "group": "Graphics", "label": "Spark showers", "type": "bool", "default": true,
 		"help": "Sparks, smoke and flame flown by the graphics card: several times as many, as streaks, with the flash of a big hit on what is round it."},
+	{"id": "gfxDecals", "group": "Graphics", "label": "Battle marks on the deck", "type": "bool", "default": true,
+		"help": "The fight leaves its marks on the floor: gouges that glow for a second, soot, tyre rubber, and oil from what breaks."},
 ]
 
 ## Every setting the Settings page shows: the game's own, with these after

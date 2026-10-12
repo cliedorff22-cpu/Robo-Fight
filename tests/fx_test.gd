@@ -81,6 +81,21 @@ func _process(dt: float) -> bool:
 			elif _frame == 8: _shot("hit2_f8")
 			elif _frame == 20:
 				_shot("hit2_f20")
+				# What it left on the deck, from above: a part failing, a shove, and the two hits.
+				var mid: Vector3 = fs.fight.red.sim.global_position.lerp(fs.fight.blue.sim.global_position, 0.5)
+				fs.fight.bus.emit("combat:partFailed", {"botId": fs.fight.blue.id, "key": "motor", "category": "motor", "at": mid + Vector3(0.8, 0.2, 0.6), "normal": Vector3.UP})
+				fs.fight.bus.emit("combat:hit", {"kind": "ram", "attackerId": fs.fight.red.id, "defenderId": fs.fight.blue.id, "targetKey": "armor.1",
+					"at": mid + Vector3(-0.9, 0.1, -0.5), "normal": Vector3.UP, "deliveredJ": 900.0, "severity": "hit", "hits": [], "failures": []})
+				fs.fight.bus.emit("combat:hit", {"kind": "weapon", "attackerId": fs.fight.red.id, "defenderId": fs.fight.blue.id, "targetKey": "armor.1",
+					"at": mid + Vector3(0.0, 0.2, -1.4), "normal": Vector3.UP, "deliveredJ": 3000.0, "severity": "heavy", "hits": [], "failures": []})
+				fs.cam.select("overhead")
+				_step = 7
+				_frame = 0
+		7:
+			_frame += 1
+			if _frame == 12: _shot("marks_hot")
+			elif _frame == 150:
+				_shot("marks")
 				# Now set blue alight.
 				for key in ["battery", "motor", "electronics"]: fs.views[fs.fight.blue.id].set_panel_condition(key, 0.1)
 				fs.cam.select("arena_a")

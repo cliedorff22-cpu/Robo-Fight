@@ -36,6 +36,7 @@ var arena_view: ArenaView
 var venue_view: Node3D = null
 var cam: CameraRig
 var effects: Effects
+var marks: DeckMarks
 var hud: Hud
 var booth: Booth
 var audio: GameAudio
@@ -207,6 +208,9 @@ func _build() -> void:
 	# logic layer has no idea it is being watched.
 	effects = Effects.new(fight.bus, views, fight.debris, Rng.new(Rng.hash_seed("%d:fx" % match_seed)))
 	add_child(effects)
+	# What the fight leaves on the deck.
+	marks = DeckMarks.new(fight.bus, views, Vector2(fight.world.dims.halfX, fight.world.dims.halfZ), Rng.new(Rng.hash_seed("%d:marks" % match_seed)))
+	add_child(marks)
 
 	# ---------------------------------------------------------- HUD, sound, commentary
 	var story = _career.get("story") if (_career is Dictionary and _career.get("oppId") == _opp_id) else null
@@ -292,6 +296,7 @@ func apply_settings(changed: String) -> void:
 	Stage.apply_viewport(get_viewport(), s)
 	stage.apply_settings(s)
 	effects.apply_settings(s)
+	marks.apply_settings(s)
 	if venue_view != null: venue_view.set("gpu_fire", effects.gpu())
 	hud.set_show_damage(J.truthy(s.get("hudDamage", true)))
 	audio.apply_settings(s)
@@ -499,6 +504,7 @@ func do_action(action: String) -> void:
 			_reel_due = false
 			hud.hide_results()
 			effects.clear()
+			marks.clear()
 			cam.reset_chase()
 			commentary.reset()
 			booth.clear()
@@ -613,7 +619,9 @@ func _process(dt: float) -> void:
 	arena_view.update(0.0 if still else dt)
 	if venue_view != null: venue_view.call("update", 0.0 if still else dt, bout)
 	effects.set_paused(still)
-	if not still: effects.update(dt)
+	if not still:
+		effects.update(dt)
+		marks.update(dt)
 	cam.update(dt, focus, fight.replay.playing, pair)
 	# The lens: soft backgrounds for the intro and the replays, sharp for the fight.
 	stage.focus(cam, focus.origin, fight.replay.playing or bout.phase == Match.IDLE or bout.phase == Match.COUNTDOWN, dt)

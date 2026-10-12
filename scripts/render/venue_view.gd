@@ -283,6 +283,20 @@ func _build_crowd(seats: Array) -> void:
 	for i in range(8): head_prof.append(Vector2(sin(i / 7.0 * PI) * 0.115, -cos(i / 7.0 * PI) * 0.115))
 	var head := Geo.lathe(head_prof, 9).translate(0, 1.14, 0)
 	for i in head.uv.size(): head.uv[i] = Vector2.ZERO
+	if Parts.detailed:
+		# People rather than blocks, for about the same number of triangles:
+		# a torso with shoulders, round arms, and a head that spends fewer.
+		body = Geo.lathe([Vector2(0.17, 0.42), Vector2(0.19, 0.6), Vector2(0.215, 0.82), Vector2(0.2, 0.93), Vector2(0.09, 0.99), Vector2(0.0, 1.0)], 6)
+		body.apply(Transform3D(Basis.from_scale(Vector3(1.0, 1.0, 0.62)), Vector3.ZERO))
+		for i in body.uv.size(): body.uv[i] = Vector2.ZERO
+		for sx in [-0.255, 0.255]:
+			var arm := Geo.cylinder(0.05, 0.06, 0.5, 5).translate(sx, 0.70, 0)
+			for i in arm.uv.size(): arm.uv[i] = Vector2(1, 0)
+			body.append(arm)
+		head_prof = []
+		for i in range(5): head_prof.append(Vector2(sin(i / 4.0 * PI) * 0.115, -cos(i / 4.0 * PI) * 0.125))
+		head = Geo.lathe(head_prof, 6).translate(0, 1.13, 0)
+		for i in head.uv.size(): head.uv[i] = Vector2.ZERO
 	var palette := []
 	for c in J.path(venue, ["crowd", "palette"], ["#888888"]): palette.append(_col(c).srgb_to_linear())
 	var skins := []

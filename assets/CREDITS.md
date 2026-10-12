@@ -34,3 +34,9 @@ walkway round the box (`VenueView._build_pit_gear`).
 | `korean_fire_extinguisher_01` | Korean Fire Extinguisher 01 |
 | `propane_tank` | Propane Tank |
 | `steel_frame_shelves_01` | Steel Frame Shelves 01 |
+
+## Studio panorama - Poly Haven (https://polyhaven.com), CC0
+
+`assets/hdri/studio_small_08_1k.hdr` (Studio Small 08, 1K HDR), downloaded
+2026-10-12: what a robot reflects where it is shown on its own (the workshop
+and the other previews).

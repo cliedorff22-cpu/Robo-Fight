@@ -39,7 +39,7 @@ func _initialize() -> void:
 	env.ambient_light_energy = 0.9
 	var sky := Sky.new()
 	var pano := PanoramaSkyMaterial.new()
-	pano.panorama = ImageTexture.create_from_image(Mats.studio_panorama())
+	pano.panorama = Mats.studio_sky()
 	sky.sky_material = pano
 	env.sky = sky
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY

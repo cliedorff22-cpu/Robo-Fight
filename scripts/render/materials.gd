@@ -559,6 +559,13 @@ func _machined_roughness() -> Texture2D:
 	var t := g.texture()
 	return t
 
+## What a robot on show reflects: a photographed studio (CC0, Poly Haven)
+## with scanned surfaces on, the drawn one below without.
+const STUDIO_HDRI := "res://assets/hdri/studio_small_08_1k.hdr"
+static func studio_sky() -> Texture2D:
+	if _want_scanned and ResourceLoader.exists(STUDIO_HDRI): return load(STUDIO_HDRI)
+	return ImageTexture.create_from_image(studio_panorama())
+
 ## A photo studio, as an equirectangular picture for reflections: a dark
 ## room, a big softbox overhead, a cool strip on one side, a warm one on the
 ## other, and a dim floor. What makes a bar or a disc read as polished steel.

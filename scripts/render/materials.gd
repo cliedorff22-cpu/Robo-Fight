@@ -1,10 +1,12 @@
 ## materials.gd - the shared materials, with procedurally generated maps.
 ##
-## No external texture files: every map is drawn at boot (tex_paint.gd).
+## Every map is drawn at boot (tex_paint.gd); with "Scanned surfaces" on
+## (graphics tier 3) the same materials wear photographed texture sets from
+## assets/textures instead - see SCANNED and set_scanned below.
 ## Materials are keyed by the `material` strings used in parts.json and
 ## arena.json, so data picks the look.
 ##
-## Art direction: STYLISED, not photoreal. Clean panels, readable shapes, a
+## Art direction of the drawn maps: clean panels, readable shapes, a
 ## restrained amount of wear. Wear levels come from arena.json's `style`
 ## block, so the whole look is a data edit: `floorWear` 0 is factory-new.
 class_name Mats

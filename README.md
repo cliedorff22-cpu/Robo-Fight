@@ -137,6 +137,22 @@ there to be switched on, on a faster machine.
 Sparks, smoke and marks roll their own dice (seeded from the match's), so a
 seed plays the same fight whatever the graphics are set to.
 
+### Authored surfaces and models
+
+The third stage brings in what is not drawn by the game itself. All of it is
+CC0 (public domain); `assets/CREDITS.md` lists every file and where it came
+from.
+
+| Setting | What it does | Where |
+| --- | --- | --- |
+| Scanned surfaces | texture sets photographed from the real thing (ambientCG) in place of the generated maps: the deck's scuffed dark plate - with the plates' seams, bolts, scuffs, rubber and oil laid over it as the material's detail layer, so the scan never shows its repeat - brushed weapon steel, machined hubs, armour steel, tyre rubber, UHMW, and poured concrete on the hall floor. The same materials, dressed differently: the switch is live | `render/materials.gd` (`SCANNED`, `set_scanned`) |
+| Detailed models | wheels as models (two rows of lugs in a chevron on the tyre; a rim with lips, a five-hole face plate over a dark well, boss and wheel nuts), the lighting rig as laced box truss with fins, barn doors and yokes on the lamps, and pit gear round the box - tool carts and chests, barrels, sack trucks, extinguishers, gas bottles, shelving (Poly Haven models). Robots change from the next fight | `render/parts.gd` (`_wheel_detailed`), `render/venue_view.gd` (`_truss`, `_lamp_fittings`, `_build_pit_gear`) |
+
+Scanned surfaces cost 0.6 ms a frame and the models 0.5: with both on the
+defaults run at 62 frames a second in the Titan Dome and 61 in the Giant Nut
+Coliseum (66 and 65 without them). That is all the room there was above 60 -
+the next thing added there has to pay for itself.
+
 Two tools measure and picture it, both running the real fight scene (AI
 against AI, a fixed seed) over the whole screen, and two more picture the
 effects and the robot shaders to order:

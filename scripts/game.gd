@@ -61,6 +61,8 @@ func set_setting(id: String, value) -> void:
 ## The settings that are the whole game's, not one screen's.
 func apply_settings() -> void:
 	Stage.apply_viewport(get_tree().root, settings)
+	# How a robot is drawn, in the workshop as in the fight.
+	RobotFx.apply_settings(settings)
 
 ## Go to the fight (ui/fight_scene.gd reads `req`).
 func start_fight(req: Dictionary) -> void:

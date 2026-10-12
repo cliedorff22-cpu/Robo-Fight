@@ -115,7 +115,8 @@ void fragment() {
 	vec4 back = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, scene, 1.0);
 	float gap = -back.z / back.w + VERTEX.z;
 	ALBEDO = COLOR.rgb * (0.75 + 0.5 * n);
-	ALPHA = body * fade * COLOR.a * clamp(gap / soft_m, 0.0, 1.0);
+	// (And thins out close to the camera, so a puff never fills the lens.)
+	ALPHA = body * fade * COLOR.a * clamp(gap / soft_m, 0.0, 1.0) * smoothstep(0.6, 2.5, -VERTEX.z);
 }
 "
 # Flame is smoke that gives light: the same rise, a colour that runs from
@@ -138,7 +139,8 @@ void fragment() {
 	vec3 hot = mix(vec3(1.0, 0.86, 0.45), vec3(1.0, 0.42, 0.08), smoothstep(0.0, 0.45, v_u));
 	hot = mix(hot, vec3(0.55, 0.08, 0.02), smoothstep(0.45, 1.0, v_u));
 	ALBEDO = hot * COLOR.rgb;
-	ALPHA = body * min(1.0, v_u * 10.0) * (1.0 - v_u) * COLOR.a;
+	// Nothing burns across the lens: a lick close to the camera thins to nothing.
+	ALPHA = body * min(1.0, v_u * 10.0) * (1.0 - v_u) * COLOR.a * smoothstep(1.5, 5.0, -VERTEX.z);
 }
 "
 

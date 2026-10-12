@@ -114,14 +114,40 @@ off a frame takes 9.4 ms (107 frames a second); with the defaults 15.4 ms (66 a
 second there, 71-80 in the smaller venues); with bounced light as well 16.7 ms
 - right on the 60 line, which is why that one starts off.
 
+A second set is about what happens in the fight rather than how the hall is
+lit. Nothing in it needs a downloaded file: every texture is drawn at boot,
+as the rest of the game's are.
+
+| Setting | What it does | Where |
+| --- | --- | --- |
+| Spark showers | sparks, smoke and flame flown by the graphics card: six times as many sparks, drawn as streaks along their flight, bouncing off the deck; smoke lit by the hall's lamps that fades where it meets something; fire for a burning battery and for the venue's flame cannons; the flash of a big hit on what is round it | `render/gpu_fx.gd`, called from `render/effects.gd` |
+| Battle marks on the deck | decals laid where the fight makes them: gouges that glow for a second, soot, tyre rubber, oil under a part that failed and a trail of it behind a robot that is bleeding | `render/deck_marks.gd` |
+| Battle damage on the paint | a damaged panel's own shader: paint chipped back to bare steel as its condition falls, soot, a bright scrape at each place it was hit and a second of orange heat in it | `render/robot_fx.gd` |
+| Spinner blur | a weapon at speed drawn as a camera sees it: solid wherever the rotor fills the whole turn, see-through where the blades and teeth sweep. Measured from each rotor's own mesh (it is pictured once from along its axle) | `render/robot_fx.gd` |
+| Hall light bounce | VoxelGI: the hall is voxelised as the fight loads (about a second) and the lamps' light carries on off what it lands on - **off by default** | `render/stage.gd` |
+
+The first four together cost about half a millisecond a frame - none of them
+measurably more than the run-to-run noise on its own. With them on, the
+defaults run at 66 frames a second in the Titan Dome, 65 in the Giant Nut
+Coliseum and 73-77 in the smaller venues (same machine and picture size as
+above). The hall's bounce is the dearest thing on the page: 4.4 ms, which
+takes the Titan Dome to 50 a second, for a change you have to look for. It is
+there to be switched on, on a faster machine.
+
+Sparks, smoke and marks roll their own dice (seeded from the match's), so a
+seed plays the same fight whatever the graphics are set to.
+
 Two tools measure and picture it, both running the real fight scene (AI
-against AI, a fixed seed) over the whole screen:
+against AI, a fixed seed) over the whole screen, and two more picture the
+effects and the robot shaders to order:
 
 ```bash
 G=/Applications/Godot.app/Contents/MacOS/Godot
 $G --disable-vsync --path . -s tests/gfx_bench.gd -- /tmp/bench [venue] [layout] [red] [blue] [camera] [seconds] [setting=value ...]
 $G --path . -s tests/gfx_shots.gd -- /tmp/shots [venue] [layout] [red] [blue] [setting=value ...]
 $G --path . -s tests/gfx_settings_test.gd -- /tmp/settings     # the Settings page and the pause screen
+$G --fixed-fps 60 --path . -s tests/fx_test.gd -- /tmp/fx [venue] [setting=value ...]    # a heavy hit's sparks frame by frame, a fire, the marks left on the deck
+$G --path . -s tests/robot_fx_test.gd -- /tmp/robot robot_id [robot_id ...] [setting=value ...]   # a robot as built (weapon at speed), half worn, wrecked
 ```
 
 `setting=value` (for example `gfxSSR=false gfxAA=msaa`) changes a setting for

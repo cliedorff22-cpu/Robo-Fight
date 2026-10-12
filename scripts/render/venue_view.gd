@@ -40,6 +40,7 @@ var _excite := 0.4
 var _flash := 0.0
 var _t := 0.0
 var _beams := []               # [{ node, mat, out, along, at, phase }]
+static var _beam_shader: Shader = null
 var _ribbons := []
 var _lamp_mat: StandardMaterial3D
 var _pyros := []               # [{ flame, core, fmat, cmat, t }]
@@ -380,17 +381,29 @@ func _build_lights(b: ArenaView.Batch) -> void:
 	add_child(lamps.instance(_lamp_mat, false))
 
 # A light beam: an open cone, additive, opening along -Z from its apex (so
-# look_at aims it).
+# look_at aims it). Brightest where you look through the middle of it and
+# gone at its outline, and thinning out close to the camera - a camera that
+# stands in a beam (the Stands Cam) sees a glow, not a slab with an edge.
+const BEAM_SHADER := "shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled;
+uniform vec3 tint : source_color = vec3(1.0);
+uniform float strength = 0.02;
+void fragment() {
+	float facing = abs(dot(normalize(NORMAL), normalize(VIEW)));
+	ALBEDO = tint;
+	ALPHA = strength * 2.4 * facing * facing * smoothstep(2.0, 9.0, -VERTEX.z);
+}
+"
+
 func _make_beam(color: Color, length: float) -> Dictionary:
 	var g := Geo.cylinder(0.0, length * 0.28, length * 1.15, 20, true).translate(0, -length * 1.15 / 2.0, 0).rotate_x(PI / 2.0)
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.albedo_color = Color(color, 0.02)
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
-	m.disable_fog = true
+	if _beam_shader == null:
+		_beam_shader = Shader.new()
+		_beam_shader.code = BEAM_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = _beam_shader
+	m.set_shader_parameter("tint", color)
+	m.set_shader_parameter("strength", 0.02)
 	return {"node": g.instance(m, false), "mat": m, "color": color}
 
 # ---------------------------------------------------------------- screens
@@ -650,7 +663,7 @@ func update(dt: float, bout: Match = null) -> void:
 		var along: float = b.at * _length + sin(_t * 0.23 + b.phase * 2.0) * _length * 0.35
 		var aim := Vector3(b.out.x * reach + b.along.x * along, t0.v0 + (t0.v1 - t0.v0) * 0.5, b.out.y * reach + b.along.y * along)
 		(b.node as Node3D).look_at(aim, Vector3.UP)
-		(b.mat as StandardMaterial3D).albedo_color = Color(b.color, 0.015 + 0.04 * _flash)
+		(b.mat as ShaderMaterial).set_shader_parameter("strength", 0.015 + 0.04 * _flash)
 	for m in _ribbons: (m as StandardMaterial3D).emission_energy_multiplier = 1.2 + 1.6 * _flash * (0.5 + 0.5 * sin(_t * 18.0))
 	_lamp_mat.emission_energy_multiplier = 2.2 + 1.5 * _flash
 	for p in _pyros:
@@ -668,8 +681,8 @@ func update(dt: float, bout: Match = null) -> void:
 			p.owed = p.get("owed", 0.0) + dt * 90.0
 			while p.owed >= 1.0:
 				p.owed -= 1.0
-				gpu_fire.flame(at + Vector3(randf() - 0.5, 0.0, randf() - 0.5) * 0.25, Vector3((randf() - 0.5) * 0.9, (7.0 + randf() * 5.0) * push + 1.0, (randf() - 0.5) * 0.9),
-					0.55 + randf() * 0.5, 0.35 + randf() * 0.4, 1.3)
+				gpu_fire.flame(at + Vector3(randf() - 0.5, 0.0, randf() - 0.5) * 0.2, Vector3((randf() - 0.5) * 0.5, (7.0 + randf() * 5.0) * push + 1.0, (randf() - 0.5) * 0.5),
+					0.45 + randf() * 0.35, 0.3 + randf() * 0.35, 0.9)
 			continue
 		var k: float = p.t / 1.2
 		var h := 2.5 + 3.5 * sin(minf(1.0, (1.0 - k) * 4.0) * PI / 2.0) * (0.85 + 0.15 * sin(_t * 40.0))

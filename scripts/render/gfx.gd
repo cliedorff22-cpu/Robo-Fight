@@ -20,6 +20,8 @@ const SETTINGS := [
 		"help": "Contact shading where parts meet and under the robots."},
 	{"id": "gfxSSIL", "group": "Graphics", "label": "Bounced light", "type": "bool", "default": false,
 		"help": "Lit surfaces throw a little of their colour onto what is next to them. Off to begin with: with everything else on it takes the biggest venues under 60 frames a second."},
+	{"id": "gfxGI", "group": "Graphics", "label": "Hall light bounce", "type": "bool", "default": false,
+		"help": "The lamps' light carries on off what it lands on: the deck lights the walls and a robot's flanks, and the shadows are filled by that instead of a flat glow. Worked out once as the fight loads (about a second). Off to begin with: it is the dearest thing on this page, about 14 frames a second in the biggest venues."},
 	{"id": "gfxSSR", "group": "Graphics", "label": "Floor reflections", "type": "bool", "default": true,
 		"help": "The deck and polished steel mirror what is on screen."},
 	{"id": "gfxProbe", "group": "Graphics", "label": "Arena reflections", "type": "bool", "default": true,
@@ -32,6 +34,10 @@ const SETTINGS := [
 		"help": "Sparks, smoke and flame flown by the graphics card: several times as many, as streaks, with the flash of a big hit on what is round it."},
 	{"id": "gfxDecals", "group": "Graphics", "label": "Battle marks on the deck", "type": "bool", "default": true,
 		"help": "The fight leaves its marks on the floor: gouges that glow for a second, soot, tyre rubber, and oil from what breaks."},
+	{"id": "gfxWear", "group": "Graphics", "label": "Battle damage on the paint", "type": "bool", "default": true,
+		"help": "A damaged panel's paint chips back to bare steel and soots up, is scraped bright where it was hit, and the scrape glows for a second."},
+	{"id": "gfxBlur", "group": "Graphics", "label": "Spinner blur", "type": "bool", "default": true,
+		"help": "A weapon at speed is drawn as the blur a camera sees - solid where it fills the turn, see-through where the blades sweep - instead of a bar turning slowly."},
 ]
 
 ## Every setting the Settings page shows: the game's own, with these after

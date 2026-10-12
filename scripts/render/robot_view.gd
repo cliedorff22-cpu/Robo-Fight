@@ -47,6 +47,16 @@ var _weapon_angle := 0.0
 var _cond := {}                # fitting key -> condition, as last shown
 var _smoke_at := {}
 var _old_dents := {}
+var _scars := {}               # MeshInstance3D -> { hits, heat, next }: where it was hit (the wear shader's)
+var _cooling := false
+var _rotor_mi: MeshInstance3D = null    # a spinner's rotor, and what stands in for it at speed
+var _rotor_parent: Node3D = null
+var _blur = null               # { solid, ghost } once the rotor has been measured
+var _blur_key := ""
+var _blur_lobes := 2
+var _blur_asked := false
+var _blur_b := 0.0
+var _blur_phase := 0.0
 
 func _init(assembled_robot: Dictionary, robot_rig: RobotRig = null, materials: Mats = null) -> void:
 	assembled = assembled_robot
@@ -393,7 +403,10 @@ func _build_weapon(shape: Dictionary, look: Dictionary, hull_points: Array) -> v
 			# itself is a slimmer plate in the middle of it, as real ones are.
 			var plate := minf(t, maxf(0.022, r * 0.12))
 			parts = Parts.disc_rotor(r, plate, int(J.g(look, "teeth", 2 if r > 0.2 else 3)))
-		_add_parts(rotor, parts, true)
+		_rotor_mi = _add_parts(rotor, parts, true)
+		_rotor_parent = tilt
+		_blur_key = "%s|%s|%s|%.4f|%.4f|%s" % [assembled.id, weapon_id, style, r, t, J.to_json(look)]
+		_blur_lobes = 2 if (style == "bar" or style == "eggbeater") else (3 if style == "tri" else int(J.g(look, "teeth", 2)))
 		_tag(hub, "weapon")
 		# What the rotor turns on: a disc or drum's axle across its two
 		# supports (with a bearing cap on each), a bar's shaft up through its
@@ -521,6 +534,9 @@ func _on_paint(maps: Dictionary) -> void:
 	for mi in _state:
 		var st: Dictionary = _state[mi]
 		if not st.paint: continue
+		if st.fx:
+			RobotFx.copy_look(st.mat, _paint)
+			continue
 		mats.set_paint_maps(st.mat, maps)
 		st.base = Color.WHITE
 		st.rough = 1.0 if maps.get("finish") != null else st.rough
@@ -565,6 +581,7 @@ func update_weapon(weapon: Weapon, dt: float) -> void:
 			var visual := minf(weapon.omegaRadS, 42.0)
 			sp.angle += visual * dt
 			sp.mesh.rotation.y = sp.angle
+			_update_blur(weapon.omegaRadS, dt)
 			# A bent rotor wobbles on its shaft; a dead one sits crooked.
 			if _weapon_cond < 0.7:
 				_weapon_angle += visual * dt
@@ -591,11 +608,103 @@ func update_weapon(weapon: Weapon, dt: float) -> void:
 			sp.z += (target - sp.z) * minf(1.0, dt * 6.0)
 			sp.mesh.rotation.z = sp.z
 
+# A rotor at speed is a blur (robot_fx.gd): its own mesh fades out and the
+# two surfaces measured from it stand in - solid where it fills the turn,
+# see-through where the blades and teeth sweep.
+func _update_blur(omega: float, dt: float) -> void:
+	if _rotor_mi == null: return
+	var b := smoothstep(RobotFx.BLUR_FROM, RobotFx.BLUR_FULL, omega) if (RobotFx.blur_on and _weapon_cond > 0.001) else 0.0
+	if b > 0.0 and _blur == null and not _blur_asked and is_inside_tree():
+		_blur_asked = true
+		RobotFx.measure(_blur_key, self, _rotor_mi.mesh as ArrayMesh, _on_rotor_measured)
+	if _blur == null or (b <= 0.0 and _blur_b <= 0.0): return
+	_blur_b = b
+	_rotor_mi.transparency = b if b < 0.995 else 0.0
+	_rotor_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY if b >= 0.995 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	if _blur.solid != null: (_blur.solid as MeshInstance3D).visible = b > 0.5
+	if _blur.ghost != null:
+		var ghost: MeshInstance3D = _blur.ghost
+		ghost.visible = b > 0.0
+		_blur_phase = fmod(_blur_phase + dt * 2.6, TAU)
+		var m: ShaderMaterial = ghost.mesh.surface_get_material(0)
+		m.set_shader_parameter("fade", b)
+		m.set_shader_parameter("phase", _blur_phase)
+
+func _on_rotor_measured(profile: Dictionary) -> void:
+	if _blur != null or _rotor_mi == null or not is_instance_valid(_rotor_parent): return
+	var materials := []
+	for s in _rotor_mi.mesh.get_surface_count(): materials.append(_rotor_mi.mesh.surface_get_material(s))
+	_blur = RobotFx.build_blur(profile, materials, _blur_lobes)
+	for part in [_blur.solid, _blur.ghost]:
+		if part == null: continue
+		(part as MeshInstance3D).gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+		_rotor_parent.add_child(part)
+
 # ---------------------------------------------------------------- damage
 
 ## Dent a fitting's pieces at a world-space point.
 func dent(fitting_key: String, world_point: Vector3, depth := 0.012) -> void:
-	for mi in panel_meshes.get(fitting_key, []): _dent_mesh(mi, world_point, depth)
+	for mi in panel_meshes.get(fitting_key, []):
+		_dent_mesh(mi, world_point, depth)
+		_scar_at(mi, world_point, 0.05 + depth * 4.0, 1.0)
+
+# Where a panel was hit, for the wear shader: scraped bright there, and hot
+# for a second. A panel keeps its last few.
+func _scar_at(mi: MeshInstance3D, world_point: Vector3, radius: float, hot: float) -> void:
+	var to_world := (global_transform if is_inside_tree() else transform) * _to_body(mi)
+	var local := to_world.affine_inverse() * world_point
+	if not mi.mesh.get_aabb().grow(radius * 0.6).has_point(local): return
+	if not _scars.has(mi):
+		var fresh_hits := PackedVector4Array()
+		var fresh_heat := PackedFloat32Array()
+		fresh_hits.resize(RobotFx.MAX_SCARS)
+		fresh_heat.resize(RobotFx.MAX_SCARS)
+		_scars[mi] = {"hits": fresh_hits, "heat": fresh_heat, "next": 0}
+	var sc: Dictionary = _scars[mi]
+	# In the panel's space as built: a panel hanging loose has been re-centred.
+	var pivot: Vector3 = mi.get_meta("pivot", Vector3.ZERO)
+	var hits: PackedVector4Array = sc.hits
+	var heat: PackedFloat32Array = sc.heat
+	hits[sc.next] = Vector4(local.x + pivot.x, local.y + pivot.y, local.z + pivot.z, radius)
+	heat[sc.next] = hot
+	sc.hits = hits
+	sc.heat = heat
+	sc.next = (sc.next + 1) % RobotFx.MAX_SCARS
+	if hot > 0.0: _cooling = true
+	_show_scars(mi)
+
+func _show_scars(mi: MeshInstance3D) -> void:
+	var st = _state.get(mi)
+	if st == null or not st.fx: return
+	var m: ShaderMaterial = st.mat
+	m.set_shader_parameter("origin", mi.get_meta("pivot", Vector3.ZERO))
+	var sc = _scars.get(mi)
+	if sc == null: return
+	m.set_shader_parameter("hits", sc.hits)
+	m.set_shader_parameter("heat", sc.heat)
+
+## Once a frame: what was just hit cools.
+func update_fx(dt: float) -> void:
+	if not _cooling: return
+	_cooling = false
+	var k := exp(-dt / 0.5)
+	for mi in _scars:
+		var sc: Dictionary = _scars[mi]
+		var heat: PackedFloat32Array = sc.heat
+		var any := false
+		for i in heat.size():
+			if heat[i] <= 0.0: continue
+			heat[i] = heat[i] * k if heat[i] > 0.02 else 0.0
+			any = true
+		if not any: continue
+		sc.heat = heat
+		_cooling = true
+		var st = _state.get(mi)
+		if st != null and st.fx: (st.mat as ShaderMaterial).set_shader_parameter("heat", heat)
+
+## The Settings changed: every damaged panel is shown again, its new way.
+func refresh_fx() -> void:
+	for key in _cond.keys(): set_panel_condition(key, _cond[key])
 
 # Push vertices in around a point, so a bot that has taken a beating visibly
 # carries it. Cheap: a hull piece has few enough vertices that this is a
@@ -641,6 +750,7 @@ func _loosen(mi: MeshInstance3D, key: String, t: float) -> void:
 		geo.add_to(mi.mesh, mat)
 		mi.position += c
 		mi.set_meta("pivot", c)
+		_show_scars(mi)
 	var k := (0.35 - t) / 0.35
 	var s := _seed_of(key)
 	mi.rotation = Vector3((s - 0.5) * 0.5 * k, 0.0, (-1.0 if s < 0.5 else 1.0) * (0.12 + 0.18 * k))
@@ -649,18 +759,34 @@ func _loosen(mi: MeshInstance3D, key: String, t: float) -> void:
 func set_panel_condition(fitting_key: String, condition: float) -> void:
 	var t := clampf(condition, 0.0, 1.0)
 	for mi in panel_meshes.get(fitting_key, []):
-		if not _state.has(mi):
-			var src: StandardMaterial3D = mi.mesh.surface_get_material(0)
-			var own: StandardMaterial3D = src.duplicate()
-			mi.material_override = own
-			_state[mi] = {"mat": own, "base": own.albedo_color, "rough": own.roughness, "metal": own.metallic, "paint": is_same(src, _paint)}
-		var st: Dictionary = _state[mi]
-		var own: StandardMaterial3D = st.mat
-		var k := 0.42 + 0.58 * t
-		own.albedo_color = Color(st.base.r * k, st.base.g * k, st.base.b * k, st.base.a)
-		# Scorched and scuffed: duller as it goes.
-		own.roughness = minf(1.0, st.rough + (1.0 - t) * 0.35)
-		own.metallic = st.metal * (0.6 + 0.4 * t)
+		# As built and never hit: the panel's own material, shared, as it came.
+		var pristine: bool = t >= 0.999 and not _scars.has(mi)
+		if _state.has(mi) and (pristine or _state[mi].fx != RobotFx.wear_on):
+			mi.material_override = null
+			_state.erase(mi)
+		if not pristine:
+			if not _state.has(mi):
+				var src: StandardMaterial3D = mi.mesh.surface_get_material(0)
+				if RobotFx.wear_on:
+					# Its own copy as the wear shader: chipped, sooty, scraped where hit.
+					var worn := RobotFx.wear_material(src, _seed_of("%s:%d" % [fitting_key, mi.get_index()]))
+					mi.material_override = worn
+					_state[mi] = {"mat": worn, "fx": true, "paint": is_same(src, _paint)}
+					_show_scars(mi)
+				else:
+					var copy: StandardMaterial3D = src.duplicate()
+					mi.material_override = copy
+					_state[mi] = {"mat": copy, "fx": false, "base": copy.albedo_color, "rough": copy.roughness, "metal": copy.metallic, "paint": is_same(src, _paint)}
+			var st: Dictionary = _state[mi]
+			if st.fx:
+				(st.mat as ShaderMaterial).set_shader_parameter("wear", 1.0 - t)
+			else:
+				var own: StandardMaterial3D = st.mat
+				var k := 0.42 + 0.58 * t
+				own.albedo_color = Color(st.base.r * k, st.base.g * k, st.base.b * k, st.base.a)
+				# Scorched and scuffed: duller as it goes.
+				own.roughness = minf(1.0, st.rough + (1.0 - t) * 0.35)
+				own.metallic = st.metal * (0.6 + 0.4 * t)
 		mi.visible = t > 0.001
 		_loosen(mi, fitting_key, t)
 	_cond[fitting_key] = condition
@@ -680,6 +806,7 @@ func set_panel_condition(fitting_key: String, condition: float) -> void:
 ## Back to as-built looks (a rematch starts from scratch, then re-applies
 ## what it carried in).
 func reset_condition() -> void:
+	_scars.clear()
 	var keys := {"weapon": true, "wheel": true}
 	for k in panel_meshes: keys[k] = true
 	for k in _cond: keys[k] = true
@@ -702,7 +829,9 @@ func apply_condition(condition: Dictionary) -> void:
 				var to_world := (global_transform if is_inside_tree() else transform) * _to_body(mi)
 				for d in int(ceil((1.0 - c) * 5.0)):
 					var v := int(floor(_seed_of("%s:%d" % [key, d]) * geo.pos.size()))
-					_dent_mesh(mi, to_world * geo.pos[v], 0.006 + (1.0 - c) * 0.01)
+					var at: Vector3 = to_world * geo.pos[v]
+					_dent_mesh(mi, at, 0.006 + (1.0 - c) * 0.01)
+					_scar_at(mi, at, 0.06 + (1.0 - c) * 0.05, 0.0)
 
 ## Where this robot is smoking (or burning) from right now, in world space:
 ## [{ key, pos, rate 0..1, fire, sparks }]. effects.gd turns them into smoke.

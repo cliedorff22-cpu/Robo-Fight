@@ -201,7 +201,10 @@ func _build() -> void:
 		views[u.id] = v
 	_show_start_damage()
 	# What metal reflects: the hall and the box as built, without the robots.
-	stage.reflect([arena_view, venue_view] if venue_view != null else [arena_view], arena_view.moving_parts())
+	# (Robots take the hall's bounced light but give none back.)
+	for id in views:
+		for n in (views[id] as Node).find_children("*", "GeometryInstance3D", true, false): (n as GeometryInstance3D).gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	stage.reflect([arena_view, venue_view] if venue_view != null else [arena_view], arena_view.moving_parts(), "%s|%s" % [venue, layout])
 	cam = CameraRig.new(fight.arena, fight.bus)
 	add_child(cam)
 	# Sparks, dents and flying parts. Driven entirely off the bus, so the
@@ -297,6 +300,8 @@ func apply_settings(changed: String) -> void:
 	stage.apply_settings(s)
 	effects.apply_settings(s)
 	marks.apply_settings(s)
+	RobotFx.apply_settings(s)
+	for id in views: (views[id] as RobotView).refresh_fx()
 	if venue_view != null: venue_view.set("gpu_fire", effects.gpu())
 	hud.set_show_damage(J.truthy(s.get("hudDamage", true)))
 	audio.apply_settings(s)
@@ -606,7 +611,9 @@ func _process(dt: float) -> void:
 		for u in fight.units:
 			var v: RobotView = views[u.id]
 			v.sync(u.sim.global_transform)
-			if not fight.frozen: v.update_weapon(u.weapon, dt)
+			if not fight.frozen:
+				v.update_weapon(u.weapon, dt)
+				v.update_fx(dt)
 		# The bell: the highlight reel, then the result.
 		if _results_at != null and fight.sim_time >= _results_at:
 			_results_at = null

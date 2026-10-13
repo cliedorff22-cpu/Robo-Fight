@@ -9,6 +9,7 @@ extends SceneTree
 const W := 660
 const H := 440
 const FOV := 30.0
+const TEST_ROBOTS := ["player_default", "spinner_test", "sparring_dummy"]
 const LEAGUES := ["world", "elite", "pro", "rookie", "exhibition"]
 
 var _out := "res://docs/robot-gallery.html"
@@ -33,9 +34,11 @@ func _initialize() -> void:
 			if reg.has_robot(id): _defs.append(reg.robot(id))
 			else: print("no such robot: ", id)
 	else:
-		_defs = reg.roster()
+		# The dev-only test robots (the default player, the dummies) are not
+		# part of the game's field and stay out of the page.
+		_defs = reg.roster().filter(func(r): return not TEST_ROBOTS.has(r.id))
 		for r in reg.all_robots():
-			if not in_roster.has(r.id): _defs.append(r)
+			if not in_roster.has(r.id) and not TEST_ROBOTS.has(r.id): _defs.append(r)
 	for d in _defs:
 		var card := Catalog.spec_card(reg, d.id, d)
 		card.leagueId = d.get("league") if in_roster.has(d.id) else "exhibition"

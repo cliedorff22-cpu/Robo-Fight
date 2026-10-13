@@ -51,14 +51,14 @@
     }
   },
   "build": {
-    "chassis": "chassis_mid_steel",
+    "chassis": "chassis_narrow",
     "drive": "drive_4wd_comp",
     "wheel": "wheel_7_comp",
     "motor": "motor_drive_brushless",
     "battery": "batt_8s_lipo",
     "electronics": "ecu_pro",
     "weaponMotor": "wmotor_mid",
-    "weapon": "spinner_v_disc",
+    "weapon": "spinner_v_compact",
     "srimech": "srimech_pneumatic",
     "armor": [
       "armor_uhmw_front",

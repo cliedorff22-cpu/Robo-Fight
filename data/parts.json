@@ -557,6 +557,33 @@
       }
     },
     {
+      "id": "spinner_v_compact",
+      "category": "weapon",
+      "name": "19\" Vertical Disc",
+      "tier": 3,
+      "weight": 52,
+      "cost": 4600,
+      "hp": 560,
+      "repairCostPerHp": 2.2,
+      "repairMinPerHp": 0.07,
+      "spec": {
+        "class": "spinner_v",
+        "powered": true,
+        "rotorInertiaKgM2": 0.12,
+        "radiusIn": 9.5,
+        "maxTipSpeedMps": 135,
+        "concentration": 1.3,
+        "selfDamageFraction": 0.22,
+        "gyroEffect": 0.43,
+        "sizeIn": [
+          19,
+          19,
+          4
+        ],
+        "comment": "A smaller disc turned faster: the same energy as the 22 inch one in less room, for a slim robot."
+      }
+    },
+    {
       "id": "drum_kinetic",
       "category": "weapon",
       "name": "Kinetic Drum",
@@ -994,6 +1021,100 @@
           }
         ],
         "comment": "Long wheelbase: stable for flippers and drums."
+      }
+    },
+    {
+      "id": "chassis_narrow",
+      "category": "chassis",
+      "name": "Narrow Frame (Billet Aluminium)",
+      "tier": 3,
+      "weight": 40,
+      "cost": 4400,
+      "hp": 900,
+      "repairCostPerHp": 1.4,
+      "repairMinPerHp": 0.05,
+      "spec": {
+        "sizeIn": [
+          27.5,
+          6.5,
+          19
+        ],
+        "comLocalIn": [
+          -1.5,
+          0,
+          0
+        ],
+        "groundClearanceIn": 0.6,
+        "armorSlots": {
+          "front": 1,
+          "side": 2,
+          "top": 1,
+          "rear": 1
+        },
+        "attach": [
+          {
+            "id": "weapon_front",
+            "accepts": [
+              "weapon"
+            ],
+            "posIn": [
+              13.75,
+              1.0,
+              0
+            ],
+            "dirDeg": 0
+          },
+          {
+            "id": "weapon_top",
+            "accepts": [
+              "weapon"
+            ],
+            "posIn": [
+              0,
+              3.75,
+              0
+            ],
+            "dirDeg": 0
+          },
+          {
+            "id": "drive_bay",
+            "accepts": [
+              "drive"
+            ],
+            "posIn": [
+              0,
+              -1.75,
+              0
+            ],
+            "dirDeg": 0
+          },
+          {
+            "id": "power_bay",
+            "accepts": [
+              "battery",
+              "electronics"
+            ],
+            "posIn": [
+              -9.17,
+              0,
+              0
+            ],
+            "dirDeg": 0
+          },
+          {
+            "id": "srimech_bay",
+            "accepts": [
+              "srimech"
+            ],
+            "posIn": [
+              -6.88,
+              2.25,
+              0
+            ],
+            "dirDeg": 0
+          }
+        ],
+        "comment": "Slim: the width of a vertical spinner and its drive. Hard to get a bite on from the side, and tippy if the weapon is too big for it."
       }
     },
     {

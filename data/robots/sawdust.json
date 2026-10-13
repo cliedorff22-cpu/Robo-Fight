@@ -31,7 +31,18 @@
         "count": 2,
         "lengthIn": 6
       }
-    ]
+    ],
+    "look": {
+      "forks": "blade",
+      "forkMat": "accent",
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "none",
+      "supportMat": "dark",
+      "kit": [
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_tall_box",

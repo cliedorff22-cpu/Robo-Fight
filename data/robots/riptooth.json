@@ -32,7 +32,21 @@
         "lengthIn": 4,
         "spread": 0.85
       }
-    ]
+    ],
+    "look": {
+      "bar": "hook",
+      "forks": "blade",
+      "forkMat": "steel",
+      "frame": "rails",
+      "frameMat": "anod",
+      "skirts": "plate",
+      "skirtMat": "dark",
+      "supports": "plate",
+      "supportMat": "anod",
+      "kit": [
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_wide",

@@ -171,7 +171,8 @@ static func _wheel_detailed(r: float, w: float) -> Dictionary:
 
 ## A spinner bar: a flat bar with a hardened impactor hooked out of each end,
 ## on a hub boss. Lies along X, spins about Y.
-static func bar_rotor(r: float, t: float, b: float) -> Array:
+static func bar_rotor(r: float, t: float, b: float, style := "hook") -> Array:
+	if style == "slab" or style == "taper": return _bar_plain(r, t, b, style == "taper")
 	var h := b / 2.0
 	var p := b * 0.34
 	var c := b * 0.5
@@ -192,40 +193,97 @@ static func bar_rotor(r: float, t: float, b: float) -> Array:
 		_p(bolt_ring(4, hub_r * 0.6, t * 0.75, maxf(0.005, hub_r * 0.12)), "dark"),
 	]
 
+# A plain bar: a slab with clipped corners (a Tombstone's), or one that
+# tapers from a broad middle to blunt ends. Bolted through a round boss.
+static func _bar_plain(r: float, t: float, b: float, taper: bool) -> Array:
+	var h := b / 2.0
+	var c := b * 0.3
+	var outline: PackedVector2Array
+	if taper:
+		outline = _poly([[r, -h * 0.55], [r, h * 0.55], [r * 0.3, h * 1.25], [-r * 0.3, h * 1.25], [-r, h * 0.55], [-r, -h * 0.55], [-r * 0.3, -h * 1.25], [r * 0.3, -h * 1.25]])
+	else:
+		outline = _poly([[r - c, -h], [r, -h + c], [r, h], [-r + c, h], [-r, h - c], [-r, -h]])
+	var bar := extrude(outline, t, minf(0.004, t * 0.15)).rotate_x(-PI / 2.0)
+	# The edges that do the hitting, ground bright.
+	var tips := Geo.new()
+	for s in [-1.0, 1.0]:
+		tips.append(box(b * 0.16, t * 1.03, b * (0.9 if not taper else 0.5)).translate(s * (r - b * 0.09), 0, 0))
+	var hub_r := minf(b * 0.8, r * 0.28)
+	return [
+		_p(bar, "steel"),
+		_p(tips, "dark"),
+		_p(cyl(hub_r, hub_r * 1.05, t * 1.5, 20), "hub"),
+		_p(bolt_ring(6, hub_r * 0.62, t * 0.75, maxf(0.005, hub_r * 0.11)), "dark"),
+	]
+
+## How many teeth a disc of this style has (the spinner blur's lobes).
+static func disc_teeth(style: String, r: float, teeth: int) -> int:
+	if style == "cam": return 1
+	if style == "saw": return clampi(int(round(r / 0.024)), 8, 14)
+	return teeth
+
 ## A disc with hooked teeth and lightening holes, in the XZ plane.
-## `fine` makes it a saw blade.
-static func disc_rotor(r: float, t: float, teeth := 2, fine := false) -> Array:
-	var rin := r * 0.9 if fine else r * 0.82
-	var lead := 0.02 if fine else 0.05
-	var span := (TAU / teeth) * 0.95 if fine else minf(1.1, (TAU / teeth) * 0.5)
-	var N := maxi(96, teeth * 6) if fine else 160
+## `fine` makes it a saw blade. `style`: "holes" (three round ones), "spokes"
+## (a wheel: windows between spokes), "cam" (one tooth on a snail, the heavy
+## side opposite), "saw" (a ring of short teeth) or "plain".
+static func disc_rotor(r: float, t: float, teeth := 2, fine := false, style := "holes") -> Array:
+	teeth = disc_teeth(style, r, teeth)
+	var saw := style == "saw"
+	var cam := style == "cam"
+	var rin := r * 0.9 if (fine or saw) else r * 0.82
+	var lead := 0.02 if fine else (0.04 if saw else 0.05)
+	var span := (TAU / teeth) * 0.95 if fine else ((TAU / teeth) * 0.9 if saw else minf(1.1, (TAU / teeth) * 0.5))
+	var N := maxi(96, teeth * 6) if fine else (maxi(160, teeth * 14) if saw else 160)
 	var pts := PackedVector2Array()
 	for i in N:
 		var th := (float(i) / N) * TAU
-		var best := rin
+		# A cam's rim winds outward all the way round to its one tooth.
+		var floor_r := r * lerpf(0.62, 0.84, fposmod(-th, TAU) / TAU) if cam else rin
+		var best := floor_r
 		for k in teeth:
 			var phi := fposmod(th - (float(k) / teeth) * TAU, TAU)
-			var v := rin
-			if phi < lead: v = rin + (r - rin) * (phi / lead)
-			elif phi < span: v = r - (r - rin) * pow((phi - lead) / (span - lead), 0.7)
+			var v := floor_r
+			if phi < lead: v = floor_r + (r - floor_r) * (phi / lead)
+			elif phi < span: v = r - (r - floor_r) * pow((phi - lead) / (span - lead), 0.7)
 			best = maxf(best, v)
 		pts.append(Vector2(cos(th) * best, sin(th) * best))
 	var holes := []
-	if not fine and r > 0.12:
-		for i in 3:
-			var a := (i / 3.0) * TAU + 0.5
-			var hole := PackedVector2Array()
-			var hn := seg(16)
-			for k in hn:
-				var ha := -(float(k) / hn) * TAU
-				hole.append(Vector2(cos(a) * r * 0.52 + cos(ha) * r * 0.14, sin(a) * r * 0.52 + sin(ha) * r * 0.14))
-			holes.append(hole)
+	if not fine and r > 0.12 and style != "plain":
+		if style == "spokes" or saw:
+			# Windows between spokes, from the hub out to the rim.
+			var n := 5 if r > 0.24 else 4
+			var r0 := maxf(r * 0.3, 0.04)
+			var r1 := r * (0.7 if not saw else 0.74)
+			for i in n:
+				var a0 := (float(i) / n) * TAU + 0.16
+				var a1 := (float(i + 1) / n) * TAU - 0.16
+				var hole := PackedVector2Array()
+				var m := seg(6)
+				for k in range(m + 1):
+					var a := lerpf(a0, a1, float(k) / m)
+					hole.append(Vector2(cos(a) * r1, sin(a) * r1))
+				for k in range(m + 1):
+					var a := lerpf(a1 - 0.08, a0 + 0.08, float(k) / m)
+					hole.append(Vector2(cos(a) * r0, sin(a) * r0))
+				hole.reverse()
+				holes.append(hole)
+		else:
+			# Round ones; a cam's are all on its light side, to balance it.
+			var spots := [0.5, 0.5 + TAU / 3.0, 0.5 + 2.0 * TAU / 3.0] if not cam else [1.2, 2.1]
+			for a in spots:
+				var hole := PackedVector2Array()
+				var hn := seg(16)
+				var hr := r * (0.14 if not cam else 0.11)
+				for k in hn:
+					var ha := -(float(k) / hn) * TAU
+					hole.append(Vector2(cos(a) * r * 0.52 + cos(ha) * hr, sin(a) * r * 0.52 + sin(ha) * hr))
+				holes.append(hole)
 	var thick := maxf(0.012, t)
 	var disc := extrude(pts, thick, 0.002, holes).rotate_x(-PI / 2.0)
 	var hub_r := maxf(0.025, r * 0.2)
 	var out := [_p(disc, "saw" if fine else "steel")]
 	# The hardened teeth, picked out darker.
-	if not fine:
+	if not fine and not saw:
 		var tips := Geo.new()
 		for i in teeth:
 			var a := (float(i) / teeth) * TAU + lead * 1.5
@@ -235,8 +293,13 @@ static func disc_rotor(r: float, t: float, teeth := 2, fine := false) -> Array:
 	out.append(_p(bolt_ring(5, hub_r * 0.62, (thick * 1.8 + 0.01) / 2.0, maxf(0.004, hub_r * 0.13)), "dark"))
 	return out
 
-## A drum: a heavy steel tube with staggered rows of teeth, axis Y.
-static func drum_rotor(r: float, length: float, rows_in = null, per_row := 2) -> Array:
+## A drum: a heavy steel tube with staggered rows of teeth, axis Y. `style`:
+## "teeth" (those), "bars" (two impactors the length of it, a Minotaur's) or
+## "discs" (a stack of toothed plates on a slimmer tube). `mat` is what the
+## tube is made of.
+static func drum_rotor(r: float, length: float, rows_in = null, per_row := 2, style := "teeth", mat := "steel") -> Array:
+	if style == "discs": return _drum_discs(r, length, mat)
+	if style == "bars": return _drum_bars(r, length, mat)
 	var core := cyl(r * 0.76, r * 0.76, length * 0.94, 28)
 	var flanges := Geo.new()
 	for s in [-1.0, 1.0]:
@@ -256,11 +319,51 @@ static func drum_rotor(r: float, length: float, rows_in = null, per_row := 2) ->
 			var tang := Vector3(-sin(a), 0, cos(a))
 			teeth.append(extrude(prof, tl, 0.003).apply(Transform3D(Basis(radial, tang, Vector3.UP), radial * (r * 0.73) + Vector3(0, y, 0))))
 	return [
-		_p(core, "steel"),
+		_p(core, mat),
 		_p(flanges, "dark"),
 		_p(teeth, "dark"),
 		_p(cyl(r * 0.2, r * 0.2, length * 1.04, 12), "hub"),
 	]
+
+static func _drum_bars(r: float, length: float, mat: String) -> Array:
+	var core := cyl(r * 0.8, r * 0.8, length * 0.94, 28)
+	var flanges := Geo.new()
+	for s in [-1.0, 1.0]:
+		flanges.append(cyl(r * 0.86, r * 0.86, length * 0.04, 28).translate(0, s * length * 0.48, 0))
+		flanges.append(bolt_ring(6, r * 0.5, s * length * 0.5, r * 0.06, s))
+	# An impactor bar each side, let into the tube and standing to the full radius.
+	var bars := Geo.new()
+	var prof := _poly([[0, -r * 0.2], [r * 0.2, -r * 0.14], [r * 0.24, r * 0.08], [r * 0.24, r * 0.2], [0, r * 0.2]])
+	var screws := Geo.new()
+	for k in 2:
+		var a := k * PI
+		var radial := Vector3(cos(a), 0, sin(a))
+		var tang := Vector3(-sin(a), 0, cos(a))
+		bars.append(extrude(prof, length * 0.88, 0.003).apply(Transform3D(Basis(radial, tang, Vector3.UP), radial * (r * 0.76))))
+		var n := clampi(int(round(length / 0.06)), 3, 9)
+		for i in n:
+			var y := -length * 0.4 + length * 0.8 * i / (n - 1)
+			screws.append(Geo.cylinder(r * 0.05, r * 0.05, r * 0.03, 6).apply(Transform3D(Basis(tang, radial, Vector3.UP.cross(radial)), radial * (r * 0.985) + tang * (r * 0.12) + Vector3(0, y, 0))))
+	return [_p(core, mat), _p(flanges, "dark"), _p(bars, "dark"), _p(screws, "hub"), _p(cyl(r * 0.2, r * 0.2, length * 1.04, 12), "hub")]
+
+static func _drum_discs(r: float, length: float, mat: String) -> Array:
+	var n := clampi(int(round(length / maxf(0.06, r * 0.5))), 3, 7)
+	var plate := minf(length / n * 0.5, r * 0.3)
+	var discs := Geo.new()
+	var tips := Geo.new()
+	var spacers := Geo.new()
+	for i in n:
+		var y := -length * 0.47 + plate / 2.0 + (length * 0.94 - plate) * i / (n - 1)
+		for part in disc_rotor(r, plate, 2, false, "plain"):
+			var g: Geo = part.geo
+			if part.mat == "hub": continue
+			g.rotate_y(i * PI / 2.0).translate(0, y, 0)
+			if part.mat == "dark": tips.append(g)
+			else: discs.append(g)
+		if i < n - 1:
+			var gap := (length * 0.94 - plate) / (n - 1) - plate
+			spacers.append(Geo.cylinder(r * 0.5, r * 0.5, gap, 20, true).translate(0, y + plate / 2.0 + gap / 2.0, 0))
+	return [_p(discs, "steel"), _p(tips, "dark"), _p(spacers, mat), _p(cyl(r * 0.2, r * 0.2, length * 1.04, 12), "hub")]
 
 ## An eggbeater: two flat hoops crossed on the axle, axis Y, `length` long.
 static func eggbeater_rotor(r: float, length: float) -> Array:
@@ -299,7 +402,7 @@ static func _shell_shape(profile: String, s: float) -> float:
 ## body radius at height y: the shell never cuts into the body it covers.
 ## The painted shell is in the robot's colour, with a steel skirt carrying
 ## the teeth at the rim, where the hits land.
-static func shell_rotor(r: float, h: float, profile := "dome", teeth := 2, top_y = null, body_radius: Callable = Callable()) -> Array:
+static func shell_rotor(r: float, h: float, profile := "dome", teeth := 2, top_y = null, body_radius: Callable = Callable(), rib_count := 6) -> Array:
 	var wr := r * 0.94
 	var bot := -h / 2.0
 	var top := maxf(float(top_y) if top_y != null else h / 2.0, h / 2.0)
@@ -338,7 +441,7 @@ static func shell_rotor(r: float, h: float, profile := "dome", teeth := 2, top_y
 	var band_y := bot + (top - bot) * 0.42
 	var band_r: float = minf(r * 0.99, maxf(_shell_shape(profile, 0.42) * wr, br.call(band_y) + 0.012)) + 0.002
 	var band := Geo.cylinder(band_r, band_r, maxf(0.012, (top - bot) * 0.06), seg(48), true).translate(0, band_y, 0)
-	return [
+	var out := [
 		_p(shell, "paintFlat"),
 		_p(skirt, "steel"),
 		_p(band, "accent"),
@@ -346,6 +449,28 @@ static func shell_rotor(r: float, h: float, profile := "dome", teeth := 2, top_y
 		_p(cap, "hub"),
 		_p(bolt_ring(6, cap_r * 0.65, top + 0.019, 0.006), "dark"),
 	]
+	if Dress.on and not mobile:
+		# A spun shell is braced and bolted: ribs up over it from the skirt to
+		# the hub, and the bolts that hold the skirt on. `ribs` many of them.
+		var ribs := Geo.new()
+		var rib_r := clampf(r * 0.022, 0.004, 0.008)
+		for i in rib_count:
+			var a := (float(i) + 0.5) / rib_count * TAU
+			var path := []
+			for k in range(cut, pts.size() - 1):
+				var q: Vector2 = pts[k]
+				path.append(Vector3(sin(a) * q.x, q.y, cos(a) * q.x))
+			path.append(Vector3(sin(a) * cap_r * 1.1, top, cos(a) * cap_r * 1.1))
+			ribs.append(Kit.tube(path, rib_r, 6))
+		out.append(_p(ribs, "steel"))
+		var studs := Geo.new()
+		var n := clampi(int(round(TAU * band_r / 0.07)), 10, 28)
+		for i in n:
+			var a := (float(i) / n) * TAU
+			var dir := Vector3(sin(a), 0, cos(a))
+			studs.append(Kit.bolt(0.006).apply(Kit.along(dir, dir * band_r + Vector3(0, band_y, 0))))
+		out.append(_p(studs, "hub"))
+	return out
 
 ## Three arms with a hammer block on each - the meat tenderiser.
 static func tri_rotor(r: float, t: float) -> Array:
@@ -395,6 +520,19 @@ static func arm_parts(reach: float, head: Dictionary, style: String) -> Array:
 		var block := extrude(_poly([[-l / 2.0, -h * 0.6], [l / 2.0, -h * 0.6], [l / 2.0, h * 0.4], [-l / 2.0, h * 0.4]]), w, 0.012).translate(reach, 0, 0)
 		out.append(_p(block, "dark"))
 		out.append(_p(box(l * 0.92, 0.02, w * 0.92).translate(reach, -h * 0.6 - 0.008, 0), "steel"))
+		if detailed and not mobile:
+			# Bands shrunk on round it, the socket the arm goes into, and the
+			# studs of its striking face.
+			var bands := Geo.new()
+			for s in [-1.0, 1.0]:
+				bands.append(box(l * 1.03, h * 1.02, w * 0.1).translate(reach, -h * 0.1, s * w * 0.36))
+			out.append(_p(bands, "steel"))
+			out.append(_p(cyl(0.034, 0.034, minf(w, 0.09) + 0.01, 14).rotate_z(PI / 2.0).translate(reach - l * 0.5, 0, 0), "hub"))
+			var studs := Geo.new()
+			for sx in [-1.0, 0.0, 1.0]:
+				for sz in [-1.0, 0.0, 1.0]:
+					studs.append(Geo.cone(minf(l, w) * 0.09, 0.016, 4).rotate_z(PI).translate(reach + sx * l * 0.3, -h * 0.6 - 0.024, sz * w * 0.3))
+			out.append(_p(studs, "steel"))
 	else:
 		# Axe: a pole on top, a broad blade fanning down to its edge.
 		var blade := extrude(_poly([

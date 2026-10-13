@@ -30,7 +30,19 @@
         "heightIn": 3.5,
         "length": 0.75
       }
-    ]
+    ],
+    "look": {
+      "disc": "holes",
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "none",
+      "supports": "truss",
+      "supportMat": "accent",
+      "drive": "deck",
+      "kit": [
+        "box"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

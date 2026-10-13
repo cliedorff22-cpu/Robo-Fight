@@ -23,7 +23,10 @@
       "ridge": 0.35
     },
     "mount": "overhead",
-    "extras": []
+    "extras": [],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_wide",

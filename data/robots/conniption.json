@@ -28,7 +28,20 @@
         "type": "tail",
         "heightIn": 12
       }
-    ]
+    ],
+    "look": {
+      "drum": "teeth",
+      "drumMat": "dark",
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "plate",
+      "supports": "plate",
+      "supportMat": "dark",
+      "drive": "deck",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_long",

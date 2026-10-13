@@ -63,19 +63,37 @@ func _process(dt: float) -> bool:
 			ws.call("_refresh", false)
 		7:
 			_shot("workshop_body")
+			# A disc spinner with forks: the Build section's weapon options, the
+			# weapon motor's marker and its belt drive.
+			var ws = _career().get("_workshop")
+			ws.call("_fit", "weapon", "spinner_v_disc")
+			ws.call("_fit", "weaponMotor", "wmotor_mid")
+			var body: Dictionary = (ws.get("draft").body as Dictionary).duplicate(true)
+			body.extras = [{"type": "forks"}]
+			ws.call("_set_draft", "body", body)
+			ws.call("_set_look", "skirts", "plate")
+			ws.set("tab", "body")
+			ws.call("_refresh", true)
+			_wait = 3.0
+		8:
+			_shot("workshop_build")
+			var ws = _career().get("_workshop")
+			ws.call("_select_slot", "weaponMotor")
+			_wait = 2.0
+		9:
+			_shot("workshop_motor")
 			var ws = _career().get("_workshop")
 			ws.call("_fit", "weapon", null)
-			ws.call("_select_slot", "armor:front:0") if false else null
 			ws.set("tab", "spares")
 			ws.call("_refresh", false)
-		8:
+		10:
 			_shot("workshop_spares")
 			current_scene.call("go", "career")
 			var cs = _career()
 			cs.set("tab", "standings")
 			cs.call("show_screen")
 			_wait = 2.0
-		9:
+		11:
 			_shot("hub2")
 			print("career ok: season ", _career().get("career").seasonIndex, " cash ", _career().get("career").cash)
 			return true

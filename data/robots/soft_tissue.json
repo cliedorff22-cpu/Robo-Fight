@@ -30,7 +30,18 @@
         "count": 2,
         "lengthIn": 6
       }
-    ]
+    ],
+    "look": {
+      "forks": "twin",
+      "forkMat": "accent",
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "none",
+      "kit": [
+        "sink",
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

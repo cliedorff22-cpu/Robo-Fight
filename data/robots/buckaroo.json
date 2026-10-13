@@ -28,7 +28,19 @@
         "count": 2,
         "lengthIn": 5
       }
-    ]
+    ],
+    "look": {
+      "forks": "blade",
+      "forkMat": "steel",
+      "frame": "rails",
+      "frameMat": "steel",
+      "skirts": "plate",
+      "skirtMat": "steel",
+      "bottle": "white",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_long",

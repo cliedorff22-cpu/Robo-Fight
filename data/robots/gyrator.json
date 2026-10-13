@@ -24,7 +24,17 @@
       "top": "cone"
     },
     "mount": "overhead",
-    "extras": []
+    "extras": [],
+    "look": {
+      "bar": "slab",
+      "frame": "rails",
+      "frameMat": "steel",
+      "skirts": "none",
+      "kit": [
+        "handle",
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_round",

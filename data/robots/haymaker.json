@@ -32,7 +32,21 @@
         "count": 2,
         "lengthIn": 5
       }
-    ]
+    ],
+    "look": {
+      "disc": "cam",
+      "forks": "blade",
+      "forkMat": "accent",
+      "frame": "tube",
+      "frameMat": "accent",
+      "skirts": "none",
+      "supports": "truss",
+      "supportMat": "accent",
+      "drive": "deck",
+      "kit": [
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

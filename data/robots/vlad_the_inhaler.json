@@ -28,7 +28,10 @@
         "type": "cage",
         "heightIn": 2
       }
-    ]
+    ],
+    "look": {
+      "skirts": "plate"
+    }
   },
   "build": {
     "chassis": "chassis_tall_box",

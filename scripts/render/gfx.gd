@@ -40,6 +40,8 @@ const SETTINGS := [
 		"help": "Steel, rubber, plastic and concrete photographed from the real thing, in place of the drawn textures: the deck's scuffed plate, brushed weapon steel, tyre rubber."},
 	{"id": "gfxModels", "group": "Graphics", "label": "Detailed models", "type": "bool", "default": true,
 		"help": "Wheels as models - lugged tyres on machined rims - the hall dressed with its lighting truss, lamps and pit equipment, and a crowd of people rather than blocks. From the next fight."},
+	{"id": "gfxHardware", "group": "Graphics", "label": "Robot hardware", "type": "bool", "default": true,
+		"help": "The robots as built machines: the weapon's motor, belt and pulleys, truss-cut arms, hinged fork blades, frame rails, side armour over the wheels and the fittings on the deck - a different set for every robot. From the next fight."},
 	{"id": "gfxBlur", "group": "Graphics", "label": "Spinner blur", "type": "bool", "default": true,
 		"help": "A weapon at speed is drawn as the blur a camera sees - solid where it fills the turn, see-through where the blades sweep - instead of a bar turning slowly."},
 ]

@@ -35,7 +35,19 @@
         "forwardIn": 3,
         "spread": 0.36
       }
-    ]
+    ],
+    "look": {
+      "drum": "bars",
+      "drumMat": "brass",
+      "frame": "none",
+      "skirts": "plate",
+      "skirtMat": "dark",
+      "supports": "plate",
+      "supportMat": "dark",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

@@ -30,7 +30,17 @@
       {
         "type": "pod"
       }
-    ]
+    ],
+    "look": {
+      "bar": "taper",
+      "frame": "rails",
+      "frameMat": "hub",
+      "supports": "plate",
+      "supportMat": "trim",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

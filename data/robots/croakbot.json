@@ -33,7 +33,18 @@
         "type": "eyes",
         "radiusIn": 2.6
       }
-    ]
+    ],
+    "look": {
+      "disc": "spokes",
+      "frame": "none",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "accent",
+      "drive": "deck",
+      "kit": [
+        "box"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

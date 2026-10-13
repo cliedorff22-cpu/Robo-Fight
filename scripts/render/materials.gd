@@ -171,6 +171,18 @@ func _init(style_block: Dictionary, arena_repeat: float) -> void:
 	lamp.emission = Color.html("#2bff6a")
 	lamp.emission_energy_multiplier = 2.2
 	lib.powerLight = lamp
+	# What a robot's hardware is made of (render/dress.gd): motor windings,
+	# black plastic and oxide, an eye's white, brass fittings, a drive belt.
+	lib.copper = _std(Color.html("#c8763a"), 0.85, 0.4)
+	lib.blackPart = _std(Color.html("#16171a"), 0.25, 0.5)
+	lib.whitePart = _std(Color.html("#eceae4"), 0.0, 0.35)
+	lib.brass = _std(Color.html("#c9a44a"), 0.85, 0.35)
+	lib.belt = _std(Color.html("#101012"), 0.0, 0.85)
+	var smoked := _std(Color.html("#1d2a3a"), 0.35, 0.1)
+	smoked.clearcoat_enabled = true
+	smoked.clearcoat = 0.8
+	smoked.clearcoat_roughness = 0.1
+	lib.smoked = smoked
 
 ## A livery colour as a painted panel, memoised by colour. The wear map
 ## multiplies the colour, so every bot's paint is scraped and sooty.
@@ -181,6 +193,20 @@ func livery(hex) -> StandardMaterial3D:
 		# colour they were picked as instead of going grey.
 		var mat := _std(CanvasRec.css(key), 0.12, 0.6, _wear_albedo, _wear_normal, _nrm * 0.6)
 		mat.uv1_scale = Vector3(1.4, 1.4, 1.4)
+		_livery[key] = mat
+	return _livery[key]
+
+## A livery colour as anodised aluminium: the colour in the metal, not on it.
+func anodised(hex) -> StandardMaterial3D:
+	var key := "anod:" + str(hex)
+	if not _livery.has(key):
+		var col := CanvasRec.css(str(hex))
+		# Anodising is never as pale or as dull as paint.
+		col.s = clampf(col.s * 1.15 + 0.1, 0.0, 0.92)
+		col.v = clampf(col.v, 0.35, 0.9)
+		var mat := _std(col, 0.82, 0.36)
+		mat.roughness_texture = lib.hubFine.roughness_texture
+		mat.roughness_texture_channel = lib.hubFine.roughness_texture_channel
 		_livery[key] = mat
 	return _livery[key]
 

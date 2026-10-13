@@ -31,7 +31,10 @@
         "heightIn": 5,
         "length": 0.3
       }
-    ]
+    ],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

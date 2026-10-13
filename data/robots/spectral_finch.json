@@ -32,7 +32,10 @@
       {
         "type": "pod"
       }
-    ]
+    ],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_wide",

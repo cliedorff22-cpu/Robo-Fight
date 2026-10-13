@@ -23,7 +23,20 @@
       "bridge": 0.55
     },
     "mount": "front",
-    "extras": []
+    "extras": [],
+    "look": {
+      "disc": "saw",
+      "frame": "rails",
+      "frameMat": "hub",
+      "skirts": "plate",
+      "skirtMat": "accent",
+      "supports": "plate",
+      "supportMat": "accent",
+      "drive": "deck",
+      "kit": [
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

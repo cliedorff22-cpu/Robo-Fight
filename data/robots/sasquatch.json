@@ -30,7 +30,19 @@
         "type": "hump",
         "heightIn": 3
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "steel",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "steel",
+      "drive": "deck",
+      "kit": [
+        "handle",
+        "box"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

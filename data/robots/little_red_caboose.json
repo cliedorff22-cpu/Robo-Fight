@@ -30,7 +30,10 @@
         "type": "stack",
         "heightIn": 7
       }
-    ]
+    ],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

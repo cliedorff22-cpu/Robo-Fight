@@ -22,7 +22,10 @@
       "slope": 0.6
     },
     "mount": "front",
-    "extras": []
+    "extras": [],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_compact",

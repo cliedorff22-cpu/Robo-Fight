@@ -29,7 +29,16 @@
         "count": 2,
         "lengthIn": 5
       }
-    ]
+    ],
+    "look": {
+      "frame": "tube",
+      "frameMat": "accent",
+      "skirts": "plate",
+      "skirtMat": "dark",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

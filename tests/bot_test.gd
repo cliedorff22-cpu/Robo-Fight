@@ -11,7 +11,7 @@ const VIEWS := [
 	[Vector2(0.0, 0.62), 0.0, 0.0],               # side on, nose to the right
 	[Vector2(1.5, 0.62), -PI / 2.0, 0.0],         # head on
 	[Vector2(-1.5, -0.62), 0.0, PI / 2.0],        # from above
-	[Vector2(0.0, -0.62), PI + 0.9, 0.3],         # rear quarter
+	[Vector2(0.0, -0.62), PI - 0.9, 0.3],         # rear quarter
 	[Vector2(1.5, -0.62), 0.0, -PI / 2.0],        # from below
 ]
 

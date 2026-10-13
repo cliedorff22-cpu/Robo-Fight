@@ -36,7 +36,24 @@
         "type": "eyes",
         "radiusIn": 1.8
       }
-    ]
+    ],
+    "look": {
+      "disc": "holes",
+      "forks": "blade",
+      "forkMat": "accent",
+      "frame": "rails",
+      "frameMat": "anod",
+      "anod": "#7a2d8f",
+      "skirts": "plate",
+      "skirtMat": "accent",
+      "supports": "truss",
+      "supportMat": "accent",
+      "drive": "deck",
+      "belts": 2,
+      "kit": [
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

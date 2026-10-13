@@ -24,7 +24,10 @@
       "cabLength": 0.5
     },
     "mount": "top",
-    "extras": []
+    "extras": [],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_compact",

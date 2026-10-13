@@ -28,7 +28,16 @@
         "type": "fin",
         "heightIn": 4
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "hub",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "dark",
+      "drive": "deck",
+      "fin": "holes"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

@@ -28,7 +28,14 @@
       {
         "type": "legs"
       }
-    ]
+    ],
+    "look": {
+      "frame": "tube",
+      "frameMat": "accent",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_round",

@@ -26,7 +26,10 @@
         "type": "fin",
         "heightIn": 2
       }
-    ]
+    ],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

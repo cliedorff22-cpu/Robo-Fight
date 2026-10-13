@@ -26,7 +26,19 @@
       "rearHeight": 0.85
     },
     "mount": "front",
-    "extras": []
+    "extras": [],
+    "look": {
+      "drum": "teeth",
+      "drumMat": "copper",
+      "frame": "tube",
+      "frameMat": "dark",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "dark",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_long",

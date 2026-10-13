@@ -28,7 +28,21 @@
         "count": 2,
         "lengthIn": 6
       }
-    ]
+    ],
+    "look": {
+      "bar": "hook",
+      "forks": "blade",
+      "forkMat": "dark",
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "dark",
+      "kit": [
+        "handle",
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

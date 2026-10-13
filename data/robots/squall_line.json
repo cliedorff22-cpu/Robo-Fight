@@ -28,7 +28,17 @@
         "type": "wings",
         "reachIn": 3
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "anod",
+      "supports": "plate",
+      "supportMat": "dark",
+      "drive": "deck",
+      "kit": [
+        "box"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_long",

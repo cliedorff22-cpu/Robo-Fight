@@ -30,7 +30,15 @@
         "reachIn": 4,
         "length": 0.4
       }
-    ]
+    ],
+    "look": {
+      "disc": "saw",
+      "frame": "rails",
+      "frameMat": "anod",
+      "supports": "plate",
+      "supportMat": "dark",
+      "drive": "inboard"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

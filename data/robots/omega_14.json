@@ -27,7 +27,15 @@
       {
         "type": "pod"
       }
-    ]
+    ],
+    "look": {
+      "bar": "taper",
+      "supports": "truss",
+      "supportMat": "dark",
+      "frame": "rails",
+      "frameMat": "hub",
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_wide",

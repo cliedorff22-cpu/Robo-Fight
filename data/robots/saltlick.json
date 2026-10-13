@@ -28,7 +28,10 @@
         "lengthIn": 5,
         "overhangIn": 2
       }
-    ]
+    ],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_low_wedge",

@@ -33,7 +33,10 @@
         "type": "eyes",
         "radiusIn": 1.6
       }
-    ]
+    ],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

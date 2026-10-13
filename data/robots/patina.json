@@ -22,7 +22,10 @@
       "chamferFront": 0.2
     },
     "mount": "top",
-    "extras": []
+    "extras": [],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_tall_box",

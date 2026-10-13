@@ -29,7 +29,17 @@
         "count": 2,
         "lengthIn": 6
       }
-    ]
+    ],
+    "look": {
+      "disc": "cam",
+      "forks": "blade",
+      "forkMat": "accent",
+      "frame": "rails",
+      "frameMat": "dark",
+      "supports": "plate",
+      "supportMat": "dark",
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

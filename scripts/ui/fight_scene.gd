@@ -299,6 +299,7 @@ func apply_settings(changed: String) -> void:
 	Stage.apply_viewport(get_viewport(), s)
 	Mats.apply_settings(s)
 	Parts.detailed = Gfx.on(s, "gfxModels")
+	Dress.on = Gfx.on(s, "gfxHardware")
 	stage.apply_settings(s)
 	effects.apply_settings(s)
 	marks.apply_settings(s)

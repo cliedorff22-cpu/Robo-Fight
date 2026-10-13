@@ -28,7 +28,16 @@
         "type": "cage",
         "heightIn": 1.5
       }
-    ]
+    ],
+    "look": {
+      "drum": "teeth",
+      "drumMat": "steel",
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "dark"
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

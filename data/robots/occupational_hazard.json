@@ -22,7 +22,10 @@
       "chamfer": 0.4
     },
     "mount": "low",
-    "extras": []
+    "extras": [],
+    "look": {
+      "skirts": "plate"
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

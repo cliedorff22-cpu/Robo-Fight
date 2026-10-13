@@ -28,7 +28,10 @@
         "type": "fin",
         "heightIn": 3
       }
-    ]
+    ],
+    "look": {
+      "skirts": "plate"
+    }
   },
   "build": {
     "chassis": "chassis_low_wedge",

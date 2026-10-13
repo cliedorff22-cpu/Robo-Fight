@@ -38,7 +38,15 @@
         "outIn": 3,
         "spread": 0.3
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "plate",
+      "kit": [
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

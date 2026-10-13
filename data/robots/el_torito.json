@@ -37,7 +37,10 @@
         "spread": 0.4,
         "role": "accent"
       }
-    ]
+    ],
+    "look": {
+      "skirts": "plate"
+    }
   },
   "build": {
     "chassis": "chassis_long",

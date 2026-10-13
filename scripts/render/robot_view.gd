@@ -35,6 +35,11 @@ var _accent_mat: StandardMaterial3D
 var _metal: StandardMaterial3D
 var _dark: StandardMaterial3D
 var _hub_mat: StandardMaterial3D
+var _can_hex := "#c0392b"     # what its anodised parts are dyed
+var _dress := {"pieces": {}, "items": []}
+var _dressed := false
+## Where the weapon's motor is drawn (body space), or null: the workshop's marker.
+var drive_point = null
 var _geo := {}                 # MeshInstance3D -> Geo (hull pieces, for dents)
 var _state := {}               # MeshInstance3D -> { mat, base, rough, metal, paint }
 var _weapon_geos := []         # [[Geo, Node3D]] - the weapon's own parts
@@ -92,6 +97,10 @@ func _material_for(piece: Dictionary, fitting_key) -> StandardMaterial3D:
 	if _paint != null: return _paint
 	return _body_mat if _classic else _trim_mat     # the core, mostly under its plates
 
+# A look the robot file may set, and otherwise this robot's own pick.
+func _pick(look: Dictionary, key: String, options: Array) -> String:
+	return Dress.pick_for(str(assembled.id), look, key, options)
+
 func _tag(obj: Node, key: String) -> void:
 	obj.set_meta("partKey", key)
 	if not part_objects.has(key): part_objects[key] = []
@@ -106,6 +115,16 @@ func _resolve(k: String) -> StandardMaterial3D:
 		"paint": return _paint if _paint != null else _body_mat
 		"paintFlat": return _body_mat
 		"saw": return mats.lib.sawBlade
+		"steel": return _metal
+		# Hardware (render/dress.gd).
+		"can", "anod": return mats.anodised(_can_hex)
+		"copper": return mats.lib.copper
+		"black": return mats.lib.blackPart
+		"white": return mats.lib.whitePart
+		"brass": return mats.lib.brass
+		"rubber": return mats.lib.belt
+		"poly": return mats.lib.smoked
+		"primary": return _body_mat
 	return _metal
 
 # One mesh for a list of [{ geo, mat }] parts: a surface per material.
@@ -160,20 +179,62 @@ func _build() -> void:
 		# Plain primary colour until the paint shop has drawn the picture.
 		_paint = mats.robot_paint(CanvasRec.css(J.g(livery, "primary", "#b8babf")))
 
+	# What it is built with: modelled parts in place of some pieces' plain
+	# hulls, and the hardware bolted on (render/dress.gd).
+	_can_hex = str(J.g(look, "anod", J.g(livery, "accent", "#c0392b")))
+	_dressed = Dress.on and not Parts.mobile and not _classic
+	if _dressed: _dress = Dress.plan(assembled, rig)
+
+	# Modelled pieces are gathered into one mesh for each fitting and
+	# material - a robot's four fork blades are one thing to draw, and to
+	# damage, not four.
+	var modelled := {}
+	var modelled_order := []
 	for piece in shape.pieces:
 		var key = rig.routes.get(piece.id)
-		var mat := _material_for(piece, key)
-		var geo := Parts.hull_geometry(piece.points, _body_bounds if is_same(mat, _paint) and _paint != null else null)
-		var mi := geo.instance(mat)
-		add_child(mi)
-		mi.set_meta("hull", true)        # its faces are in the paint's own picture already
-		_geo[mi] = geo
 		var is_weapon: bool = piece.slot == "weapon" or str(piece.id).begins_with("weapon:")
-		_tag(mi, "weapon" if is_weapon else (key if key != null else "chassis"))
-		# Armour and weapon pieces dent and darken as their fitting takes damage.
-		if key != null and key != "chassis" and piece.id != "core":
-			if not panel_meshes.has(key): panel_meshes[key] = []
-			panel_meshes[key].append(mi)
+		var made := []
+		if _dress.pieces.has(piece.id):
+			var tag := "weapon" if is_weapon else (str(key) if key != null else "chassis")
+			var panel: bool = key != null and key != "chassis" and piece.id != "core"
+			for p in _dress.pieces[piece.id]:
+				var pm := _resolve(p.mat)
+				var gk := "%s|%s|%d" % [tag, str(key) if panel else "", pm.get_instance_id()]
+				if not modelled.has(gk):
+					modelled[gk] = {"geo": Geo.new(), "mat": pm, "tag": tag, "key": key if panel else null, "weapon": is_weapon, "box": AABB(piece.points[0], Vector3.ZERO)}
+					modelled_order.append(gk)
+				var grp: Dictionary = modelled[gk]
+				(grp.geo as Geo).append(p.geo)
+				var box: AABB = grp.box
+				for q in piece.points: box = box.expand(q)
+				grp.box = box
+		else:
+			var mat := _material_for(piece, key)
+			var geo := Parts.hull_geometry(piece.points, _body_bounds if is_same(mat, _paint) and _paint != null else null)
+			var mi := geo.instance(mat)
+			add_child(mi)
+			mi.set_meta("hull", true)        # its faces are in the paint's own picture already
+			_geo[mi] = geo
+			made.append(mi)
+		for mi in made:
+			_tag(mi, "weapon" if is_weapon else (key if key != null else "chassis"))
+			# Armour and weapon pieces dent and darken as their fitting takes damage.
+			if key != null and key != "chassis" and piece.id != "core":
+				if not panel_meshes.has(key): panel_meshes[key] = []
+				panel_meshes[key].append(mi)
+
+	for gk in modelled_order:
+		var grp: Dictionary = modelled[gk]
+		var part: MeshInstance3D = (grp.geo as Geo).instance(grp.mat)
+		add_child(part)
+		# They hang loose about the middle of what they are part of, together.
+		part.set_meta("centre", (grp.box as AABB).get_center())
+		_geo[part] = grp.geo
+		if grp.weapon: _weapon_geos.append([grp.geo, part])
+		_tag(part, grp.tag)
+		if grp.key != null:
+			if not panel_meshes.has(grp.key): panel_meshes[grp.key] = []
+			panel_meshes[grp.key].append(part)
 
 	var L: float = assembled.dims.lengthM
 	var H: float = assembled.dims.heightM
@@ -197,6 +258,20 @@ func _build() -> void:
 			break
 
 	_build_weapon(shape, look, hull_points)
+
+	# The hardware: the weapon's drive, frame rails, what is on the deck.
+	# Two meshes at most: the drive (the workshop picks it as the weapon motor)
+	# and everything else.
+	var drive_parts := []
+	var other_parts := []
+	for item in _dress.items:
+		if str(item.id).begins_with("drive"): drive_parts.append_array(item.parts)
+		else: other_parts.append_array(item.parts)
+	if not drive_parts.is_empty():
+		var mi := _add_parts(self, drive_parts, true)
+		_tag(mi, "weaponMotor")
+		drive_point = mi.mesh.get_aabb().get_center()
+	if not other_parts.is_empty(): _tag(_add_parts(self, other_parts, true), "chassis")
 
 	# ---- wheels. Placed every frame from suspension telemetry.
 	var r: float = assembled.stats.wheelRadiusM
@@ -364,10 +439,11 @@ func _build_weapon(shape: Dictionary, look: Dictionary, hull_points: Array) -> v
 		var rotor := _group(tilt)
 		var parts: Array
 		var style: String = wv.style
+		var disc_style := ""
 		if style == "bar":
 			# At rest a bar lies ACROSS the front, the way it is parked in the box.
 			if wv.axis == "y": rotor.rotation.y = PI / 2.0
-			parts = Parts.bar_rotor(r, t, maxf(0.05, r * 0.22))
+			parts = Parts.bar_rotor(r, t, maxf(0.05, r * 0.22), _pick(look, "bar", ["hook", "hook", "slab", "taper"]) if _dressed else "hook")
 		elif style == "tri":
 			parts = Parts.tri_rotor(r, t)
 		elif style == "shell":
@@ -393,20 +469,24 @@ func _build_weapon(shape: Dictionary, look: Dictionary, hull_points: Array) -> v
 						var k := (y - ys[a]) / (ys[c] - ys[a]) if ys[c] - ys[a] > 1e-6 else 0.0
 						m = maxf(m, rads[a] + (rads[c] - rads[a]) * k)
 				return m
-			parts = Parts.shell_rotor(r, t, J.g(look, "shell", "dome"), int(J.g(look, "teeth", 2)), top_y, body_radius)
+			parts = Parts.shell_rotor(r, t, J.g(look, "shell", "dome"), int(J.g(look, "teeth", 2)), top_y, body_radius, int(J.g(look, "ribs", 4 + Rng.hash_seed("%s:look:ribs" % assembled.id) % 5)))
 		elif style == "eggbeater":
 			parts = Parts.eggbeater_rotor(r, t)
 		elif style == "drum":
-			parts = Parts.drum_rotor(r, t, look.get("rows"), int(J.g(look, "teeth", 2)))
+			if _dressed: parts = Parts.drum_rotor(r, t, look.get("rows"), int(J.g(look, "teeth", 2)), _pick(look, "drum", ["teeth", "bars", "discs"]), _pick(look, "drumMat", ["steel", "steel", "brass", "dark", "anod"]))
+			else: parts = Parts.drum_rotor(r, t, look.get("rows"), int(J.g(look, "teeth", 2)))
 		else:
 			# The collider is the full width the disc may occupy; the disc
 			# itself is a slimmer plate in the middle of it, as real ones are.
 			var plate := minf(t, maxf(0.022, r * 0.12))
-			parts = Parts.disc_rotor(r, plate, int(J.g(look, "teeth", 2 if r > 0.2 else 3)))
+			disc_style = _pick(look, "disc", ["holes", "spokes", "cam", "saw", "holes"]) if _dressed else "holes"
+			parts = Parts.disc_rotor(r, plate, int(J.g(look, "teeth", 2 if r > 0.2 else 3)), false, disc_style)
 		_rotor_mi = _add_parts(rotor, parts, true)
 		_rotor_parent = tilt
 		_blur_key = "%s|%s|%s|%.4f|%.4f|%s" % [assembled.id, weapon_id, style, r, t, J.to_json(look)]
 		_blur_lobes = 2 if (style == "bar" or style == "eggbeater") else (3 if style == "tri" else int(J.g(look, "teeth", 2)))
+		if disc_style != "": _blur_lobes = Parts.disc_teeth(disc_style, r, int(J.g(look, "teeth", 2 if r > 0.2 else 3)))
+		_blur_key += "|" + disc_style + ("|d" if _dressed else "")
 		_tag(hub, "weapon")
 		# What the rotor turns on: a disc or drum's axle across its two
 		# supports (with a bearing cap on each), a bar's shaft up through its
@@ -491,7 +571,7 @@ func _to_body(node: Node3D) -> Transform3D:
 # covers, so the name lands on a flat panel it fits (livery.gd).
 func _order_paint(livery: Dictionary, shape: Dictionary) -> void:
 	var def = assembled.get("def")
-	var key := "%s|%d|%s" % [assembled.id, hash(J.to_json(def) if def != null else str(assembled.id)), "m" if Parts.mobile else "d"]
+	var key := "%s|%d|%s" % [assembled.id, hash(J.to_json(def) if def != null else str(assembled.id)), "m" if Parts.mobile else ("h" if _dressed else "d")]
 	PaintShop.shared().request(key, _plan_paint.bind(livery, shape), _on_paint)
 
 func _plan_paint(livery: Dictionary, shape: Dictionary) -> Dictionary:
@@ -710,6 +790,9 @@ func refresh_fx() -> void:
 # carries it. Cheap: a hull piece has few enough vertices that this is a
 # handful of distance checks.
 func _dent_mesh(mi: MeshInstance3D, world_point: Vector3, depth: float) -> void:
+	# A modelled part (a fork, a hoop of tube) is scraped and worn, not
+	# re-shaped: there is far too much of it to re-work in the middle of a fight.
+	if not mi.has_meta("hull"): return
 	var geo: Geo = _geo.get(mi)
 	if geo == null: return
 	var to_world := (global_transform if is_inside_tree() else transform) * _to_body(mi)
@@ -743,7 +826,7 @@ func _loosen(mi: MeshInstance3D, key: String, t: float) -> void:
 	if not mi.has_meta("pivot"):
 		var geo: Geo = _geo.get(mi)
 		if geo == null: return
-		var c := geo.bounds().get_center()
+		var c: Vector3 = mi.get_meta("centre") if mi.has_meta("centre") else geo.bounds().get_center()
 		geo.translate(-c.x, -c.y, -c.z)
 		var mat := mi.mesh.surface_get_material(0)
 		(mi.mesh as ArrayMesh).clear_surfaces()

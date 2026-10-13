@@ -28,7 +28,18 @@
         "count": 3,
         "lengthIn": 5
       }
-    ]
+    ],
+    "look": {
+      "bar": "taper",
+      "forks": "blade",
+      "forkMat": "accent",
+      "frame": "rails",
+      "frameMat": "anod",
+      "skirts": "none",
+      "supports": "truss",
+      "supportMat": "dark",
+      "kit": []
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

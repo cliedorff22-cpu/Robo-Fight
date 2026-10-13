@@ -29,7 +29,20 @@
         "lengthIn": 9,
         "spread": 0.85
       }
-    ]
+    ],
+    "look": {
+      "forks": "shoe",
+      "forkMat": "accent",
+      "frame": "none",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "dark",
+      "drive": "deck",
+      "kit": [
+        "aerial",
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

@@ -58,6 +58,12 @@ stand outboard of the side armour, and no plate, guard, wing or leg may cut
 into a tyre. A wheel that stands clear of a narrow body is carried on arms in
 the picture (`render/robot_view.gd`).
 
+Last it tests every robot's hardware (`tools/dress_audit.gd`): nothing that
+is bolted on - a motor, a belt, a frame rail, a side plate, a gas bottle - may
+float, cut into a tyre, stand in the weapon's way, dip under the floor, or
+stand taller than the wheels of a robot that drives both ways up. It also
+lists any powered weapon that could not be given a visible drive.
+
 When a change is MEANT to alter the rules' output, run the check, read the
 differences it lists, and if they are the ones you expected record the new
 reference:
@@ -81,6 +87,8 @@ $G --path . -s tests/scene_test.gd -- /tmp/fight red_id blue_id layout venue cam
 $G --path . -s tests/view_test.gd -- /tmp/robots.png 0 8   # a line-up of robots
 $G --path . -s tests/bot_test.gd -- /tmp/bot robot_id [robot_id ...]   # one robot from six sides: what floats, what cuts into what
 $G --headless --path . -s tools/wheel_audit.gd -- [robot_id ...]     # every robot's wheels, measured (part of tools/check.sh)
+$G --path . -s tests/sheet_test.gd -- /tmp/sheet front|rear|top|side [plain] [robot_id ...]   # contact sheets, six robots to a picture (no ids: the whole field)
+$G --headless --path . -s tools/dress_audit.gd -- [-v] [robot_id ...]   # every robot's hardware, tested (part of tools/check.sh); with ids, why anything was left off
 $G --path . -s tests/keys_test.gd                          # a quick fight driven by real key presses, out with M and O
 $G --headless --fixed-fps 10 --path . -s tests/fight_test.gd -- red_id blue_id seed layout   # AI v AI in the physics, no window
 ```
@@ -152,6 +160,47 @@ Scanned surfaces cost 0.6 ms a frame and the models 0.5: with both on the
 defaults run at 62 frames a second in the Titan Dome and 61 in the Giant Nut
 Coliseum (66 and 65 without them). That is all the room there was above 60 -
 the next thing added there has to pay for itself.
+
+### Robot hardware
+
+The robots as built machines rather than painted shapes (Settings -> Robot
+hardware, `gfxHardware`, on; from the next fight). It is drawn from what real
+BattleBots are made of - the machines each robot parodies were looked up, on
+battlebots.com's robot pages, one by one. Render only: the pieces physics
+collides with are exactly what they were, so no fight changes.
+
+- **The weapon's drive.** A disc or drum has a pulley beside it and a belt
+  back to a motor can on a cradle on the deck - or running into the body, or,
+  where there is no room for a belt, a hub motor bolted to the outside of a
+  support. A bar has its motor on the hub over the bearing plate, with its
+  leads; an overhead bar's sits on the mast (an Icewave's is an engine in its
+  housing). A hammer has a gearmotor on its pivot tower, a flipper its gas
+  bottle, a crusher its ram and pump, a lifter its gearmotor.
+- **Pieces as models**, each inside the points physics uses: forks as hinged
+  blades cut from plate (single, twin, saw-backed), weapon arms as truss,
+  supports and uprights as plate with lightening holes, roll hoops as bent
+  tube, fins, stacks, eyes, domes, plows and wedges on ribs, masts, horns,
+  scorpion tails, a hammer's pivot as two cheek plates.
+- **Rotors**: discs with holes, spoked, single-toothed or as a saw ring; drums
+  with teeth, impactor bars or stacked discs, in steel, brass, copper or
+  black; bars hooked, slab or tapered; braced and bolted shells.
+- **Frame rails** (machined or tube) along the body's edges, **side armour**
+  outside the wheels for the machines that hide theirs, and **deck fittings**
+  (lifting handles, a speed controller's heat sink, an aerial, a junction box).
+
+Which of these a robot gets is its own: set in its file under `body.look`
+(about sixty are hand-matched to the real machine - a Tombstone parody has
+open wheels, a slab bar and a truss arm; a Minotaur parody a brass drum with
+impactor bars), and picked from the robot's id where the file does not say.
+The workshop's Body & paint tab has the same choices under **Build**, and the
+weapon motor is a part you can click on the robot.
+
+Nothing may float and nothing may cut into anything: every bolt-on is tried
+against the body, the tyres and everything the weapon sweeps, and left off -
+or tried somewhere else - if it does not sit right (`render/dress.gd`,
+`render/kit.gd`; `tools/dress_audit.gd` tests the whole field). It costs
+under 0.1 ms a frame: the Titan Dome still runs at 60. Before and after
+pictures are in `screenshots/hardware/`.
 
 Two tools measure and picture it, both running the real fight scene (AI
 against AI, a fixed seed) over the whole screen, and two more picture the

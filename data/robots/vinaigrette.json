@@ -23,7 +23,16 @@
       "corner": 0.22
     },
     "mount": "front",
-    "extras": []
+    "extras": [],
+    "look": {
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "plate",
+      "skirtMat": "accent",
+      "supports": "plate",
+      "supportMat": "dark",
+      "drive": "deck"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

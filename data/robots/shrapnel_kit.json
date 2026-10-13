@@ -23,7 +23,10 @@
       "chamferFront": 0.3
     },
     "mount": "top",
-    "extras": []
+    "extras": [],
+    "look": {
+      "skirts": "plate"
+    }
   },
   "build": {
     "chassis": "chassis_compact",

@@ -27,7 +27,16 @@
       "podLength": 1.15
     },
     "mount": "front",
-    "extras": []
+    "extras": [],
+    "look": {
+      "disc": "spokes",
+      "frame": "tube",
+      "frameMat": "steel",
+      "skirts": "none",
+      "supports": "truss",
+      "supportMat": "steel",
+      "drive": "deck"
+    }
   },
   "build": {
     "chassis": "chassis_tall_box",

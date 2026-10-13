@@ -28,7 +28,19 @@
         "type": "fin",
         "heightIn": 3
       }
-    ]
+    ],
+    "look": {
+      "bar": "hook",
+      "frame": "none",
+      "skirts": "plate",
+      "skirtMat": "primary",
+      "fin": "plain",
+      "supports": "plate",
+      "supportMat": "dark",
+      "kit": [
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_wide",

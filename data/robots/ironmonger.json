@@ -33,7 +33,14 @@
         "type": "wheelGuards",
         "height": 0.9
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "steel",
+      "kit": [
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_tall_box",

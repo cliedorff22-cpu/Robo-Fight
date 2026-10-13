@@ -30,7 +30,20 @@
         "count": 2,
         "lengthIn": 5
       }
-    ]
+    ],
+    "look": {
+      "disc": "saw",
+      "forks": "blade",
+      "forkMat": "accent",
+      "frame": "none",
+      "skirts": "plate",
+      "supports": "plate",
+      "supportMat": "dark",
+      "drive": "deck",
+      "kit": [
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

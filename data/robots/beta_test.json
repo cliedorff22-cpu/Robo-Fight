@@ -23,7 +23,17 @@
       "height": 0.85
     },
     "mount": "top",
-    "extras": []
+    "extras": [],
+    "look": {
+      "frame": "rails",
+      "frameMat": "steel",
+      "skirts": "plate",
+      "skirtMat": "dark",
+      "supportMat": "accent",
+      "kit": [
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_long",

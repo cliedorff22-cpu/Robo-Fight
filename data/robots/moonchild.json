@@ -29,7 +29,16 @@
         "size": 0.22,
         "heightIn": 3
       }
-    ]
+    ],
+    "look": {
+      "disc": "spokes",
+      "frame": "tube",
+      "frameMat": "dark",
+      "skirts": "none",
+      "supports": "truss",
+      "supportMat": "dark",
+      "dome": "poly"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

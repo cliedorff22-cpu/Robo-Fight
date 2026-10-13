@@ -26,7 +26,13 @@
       "noseDrop": 0.2
     },
     "mount": "top",
-    "extras": []
+    "extras": [],
+    "look": {
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "bar",
+      "supportMat": "dark"
+    }
   },
   "build": {
     "chassis": "chassis_long",

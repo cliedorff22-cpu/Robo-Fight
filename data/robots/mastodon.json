@@ -32,7 +32,15 @@
         "count": 2,
         "lengthIn": 4
       }
-    ]
+    ],
+    "look": {
+      "frame": "tube",
+      "frameMat": "dark",
+      "skirts": "none",
+      "kit": [
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_tall_box",

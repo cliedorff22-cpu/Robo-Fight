@@ -30,7 +30,16 @@
       {
         "type": "pod"
       }
-    ]
+    ],
+    "look": {
+      "bar": "hook",
+      "supports": "truss",
+      "supportMat": "accent",
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "plate",
+      "drive": "can"
+    }
   },
   "build": {
     "chassis": "chassis_wide",

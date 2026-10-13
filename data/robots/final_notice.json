@@ -30,7 +30,19 @@
       {
         "type": "pod"
       }
-    ]
+    ],
+    "look": {
+      "bar": "slab",
+      "supports": "truss",
+      "supportMat": "steel",
+      "frame": "tube",
+      "frameMat": "dark",
+      "skirts": "none",
+      "drive": "can",
+      "kit": [
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_wide",

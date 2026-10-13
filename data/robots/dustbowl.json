@@ -24,7 +24,16 @@
       "cabLength": 0.4
     },
     "mount": "overhead",
-    "extras": []
+    "extras": [],
+    "look": {
+      "bar": "slab",
+      "frame": "rails",
+      "frameMat": "steel",
+      "skirts": "none",
+      "kit": [
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_wide",

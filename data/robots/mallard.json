@@ -34,7 +34,14 @@
         "type": "eyes",
         "radiusIn": 1.6
       }
-    ]
+    ],
+    "look": {
+      "frame": "none",
+      "skirts": "plate",
+      "kit": [
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

@@ -31,7 +31,19 @@
         "type": "bumper",
         "height": 0.5
       }
-    ]
+    ],
+    "look": {
+      "bar": "slab",
+      "supports": "truss",
+      "supportMat": "steel",
+      "frame": "tube",
+      "frameMat": "steel",
+      "skirts": "none",
+      "drive": "can",
+      "kit": [
+        "aerial"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_wide",

@@ -31,7 +31,16 @@
         "heightIn": 5,
         "length": 0.3
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "anod",
+      "skirts": "none",
+      "fin": "holes",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

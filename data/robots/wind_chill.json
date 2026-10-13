@@ -28,7 +28,10 @@
         "lengthIn": 4,
         "overhangIn": 2
       }
-    ]
+    ],
+    "look": {
+      "skirts": "plate"
+    }
   },
   "build": {
     "chassis": "chassis_long",

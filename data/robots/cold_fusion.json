@@ -30,7 +30,10 @@
         "size": 0.22,
         "heightIn": 3
       }
-    ]
+    ],
+    "look": {
+      "skirts": "plate"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

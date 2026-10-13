@@ -29,7 +29,17 @@
         "heightIn": 2.5,
         "length": 0.24
       }
-    ]
+    ],
+    "look": {
+      "bar": "slab",
+      "drive": "engine",
+      "frame": "none",
+      "skirts": "plate",
+      "skirtMat": "dark",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_long",

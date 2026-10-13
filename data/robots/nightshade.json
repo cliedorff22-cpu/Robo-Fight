@@ -29,7 +29,10 @@
         "count": 2,
         "lengthIn": 3
       }
-    ]
+    ],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

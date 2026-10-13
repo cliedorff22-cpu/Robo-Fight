@@ -27,7 +27,18 @@
         "type": "eyes",
         "radiusIn": 1.8
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "anod",
+      "anod": "#6b3fa0",
+      "skirts": "plate",
+      "skirtMat": "trim",
+      "bottle": "hub",
+      "kit": [
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_long",

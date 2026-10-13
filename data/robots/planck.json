@@ -27,7 +27,17 @@
         "type": "cage",
         "heightIn": 3
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "hub",
+      "skirts": "plate",
+      "skirtMat": "trim",
+      "bottle": "white",
+      "kit": [
+        "box"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_long",

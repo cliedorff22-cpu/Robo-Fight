@@ -25,7 +25,13 @@
       "rake": 0.1
     },
     "mount": "top",
-    "extras": []
+    "extras": [],
+    "look": {
+      "frame": "rails",
+      "frameMat": "steel",
+      "skirts": "plate",
+      "supportMat": "steel"
+    }
   },
   "build": {
     "chassis": "chassis_tall_box",

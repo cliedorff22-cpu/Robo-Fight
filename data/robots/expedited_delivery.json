@@ -129,6 +129,9 @@
           "slot": "rear"
         }
       ]
+    },
+    "look": {
+      "skirts": "none"
     }
   },
   "build": {

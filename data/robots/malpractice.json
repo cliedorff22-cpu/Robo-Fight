@@ -31,7 +31,18 @@
         "count": 2,
         "lengthIn": 3
       }
-    ]
+    ],
+    "look": {
+      "bar": "hook",
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "accent",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_wide",

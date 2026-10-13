@@ -30,7 +30,20 @@
         "count": 2,
         "lengthIn": 4
       }
-    ]
+    ],
+    "look": {
+      "drum": "discs",
+      "drumMat": "dark",
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "dark",
+      "drive": "deck",
+      "kit": [
+        "box"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

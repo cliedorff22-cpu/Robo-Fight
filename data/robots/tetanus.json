@@ -28,7 +28,16 @@
         "count": 3,
         "lengthIn": 3
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "hub",
+      "skirts": "none",
+      "kit": [
+        "aerial",
+        "box"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_tall_box",

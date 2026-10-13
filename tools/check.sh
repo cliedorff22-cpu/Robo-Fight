@@ -19,4 +19,7 @@ rm -f .parse.log
 # Every robot's wheels: nothing may cut into a tyre (tools/wheel_audit.gd).
 if [ $# -eq 0 ]; then
   "$GODOT" --headless --path . -s tools/wheel_audit.gd 2>&1 | grep -E "cut +([3-9]|[0-9]{2,}) mm|cutting into a tyre"
+  # Every robot's hardware: nothing bolted on may float, cut into a tyre or
+  # stand in the weapon's way (tools/dress_audit.gd).
+  "$GODOT" --headless --path . -s tools/dress_audit.gd 2>&1 | grep -E "FAULT|robots dressed"
 fi

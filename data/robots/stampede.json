@@ -29,7 +29,16 @@
         "count": 2,
         "lengthIn": 3
       }
-    ]
+    ],
+    "look": {
+      "drum": "bars",
+      "drumMat": "dark",
+      "frame": "rails",
+      "frameMat": "hub",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "dark"
+    }
   },
   "build": {
     "chassis": "chassis_long",

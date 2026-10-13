@@ -31,7 +31,20 @@
         "lengthIn": 5,
         "spread": 0.9
       }
-    ]
+    ],
+    "look": {
+      "disc": "spokes",
+      "forks": "saw",
+      "forkMat": "steel",
+      "frame": "rails",
+      "frameMat": "hub",
+      "skirts": "plate",
+      "skirtMat": "accent",
+      "supports": "truss",
+      "supportMat": "accent",
+      "drive": "deck",
+      "belts": 2
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

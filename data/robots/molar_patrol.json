@@ -32,7 +32,23 @@
         "count": 2,
         "lengthIn": 7
       }
-    ]
+    ],
+    "look": {
+      "disc": "spokes",
+      "forks": "shoe",
+      "forkMat": "anod",
+      "anod": "#1f3fa8",
+      "frame": "rails",
+      "frameMat": "hub",
+      "skirts": "plate",
+      "skirtMat": "trim",
+      "supports": "truss",
+      "supportMat": "white",
+      "drive": "inboard",
+      "kit": [
+        "box"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

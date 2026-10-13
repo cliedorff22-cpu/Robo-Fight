@@ -29,7 +29,16 @@
         "heightIn": 3,
         "length": 0.4
       }
-    ]
+    ],
+    "look": {
+      "disc": "cam",
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "none",
+      "supports": "plate",
+      "supportMat": "dark",
+      "fin": "plain"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

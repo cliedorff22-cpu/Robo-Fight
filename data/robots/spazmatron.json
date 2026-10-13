@@ -24,7 +24,10 @@
       "top": "cone"
     },
     "mount": "overhead",
-    "extras": []
+    "extras": [],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_round",

@@ -30,7 +30,10 @@
         "count": 2,
         "lengthIn": 4
       }
-    ]
+    ],
+    "look": {
+      "skirts": "bar"
+    }
   },
   "build": {
     "chassis": "chassis_tall_box",

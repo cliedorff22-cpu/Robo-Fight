@@ -274,6 +274,9 @@ func _build_hotspots() -> void:
 		if wp == null: wp = at.call("weapon_front")
 		if wp == null: wp = Vector3(a.dims.lengthM / 2.0, 0, 0)
 		_hotspots.append({"key": "weapon", "partKey": "weapon", "p": wp})
+	# The weapon's motor, where its can (or its belt) shows on the robot.
+	var motor_at = _drive_point(a)
+	if motor_at != null and J.truthy(draft.build.get("weaponMotor")): _hotspots.append({"key": "weaponMotor", "partKey": "weaponMotor", "p": motor_at})
 	var wheels: Array = WheelModel.wheel_layout(a).wheels
 	var w0 = null
 	for w in wheels:
@@ -317,6 +320,19 @@ func _build_hotspots() -> void:
 		h.btn = b
 	_style_hotspots()
 
+# Where the weapon's drive is drawn on this build (render/dress.gd), or null.
+func _drive_point(a: Dictionary):
+	if not Dress.on or Parts.mobile: return null
+	for item in Dress.plan(a, RobotRig.at_rest(a)).items:
+		if not str(item.id).begins_with("drive"): continue
+		# The motor itself is the first thing in it (the belt comes after).
+		var pts := Kit.points_of((item.parts as Array).slice(0, 3))
+		if pts.is_empty(): continue
+		var box := AABB(pts[0], Vector3.ZERO)
+		for q in pts: box = box.expand(q)
+		return box.get_center() + Vector3(0, box.size.y * 0.5 + 0.03, 0)
+	return null
+
 func _style_hotspots() -> void:
 	for h in _hotspots:
 		var b: Button = h.btn
@@ -342,7 +358,7 @@ func _place_hotspots() -> void:
 func _pick_part(part_key: String) -> void:
 	if part_key == "": return
 	unit = "main"                # the markers and the picking are the main robot's
-	if part_key == "weapon" or part_key == "wheel":
+	if part_key == "weapon" or part_key == "wheel" or part_key == "weaponMotor":
 		_select_slot(part_key)
 		return
 	if part_key.begins_with("armor."):
@@ -374,6 +390,7 @@ func _fit(key: String, part_id) -> void:
 	var snap_key := "chassis"
 	if _on_partner() or key == "chassis": snap_key = "all"
 	elif key == "weapon" or key == "wheel": snap_key = key
+	elif key == "weaponMotor" and _drive_point(Build.assemble_robot(reg, _def())) != null: snap_key = key
 	elif key.begins_with("armor:"): snap_key = "armor.%d" % maxi(0, _armour_index(key))
 	_refresh(true, [snap_key])
 	_hover_key = "" if snap_key == "all" else snap_key
@@ -603,6 +620,89 @@ func _set_partner(key: String, value) -> void:
 	p[key] = value
 	_set_draft("partner", p)
 
+# How the robot is put together - looks only (render/dress.gd reads them from
+# body.look). Anything left on "Builder's pick" is chosen for the robot.
+const LOOK_AUTO := ["", "Builder's pick"]
+const LOOK_MATS := [["", "Builder's pick"], ["steel", "Bare steel"], ["hub", "Aluminium"], ["dark", "Black"], ["anod", "Anodised"],
+	["accent", "Accent colour"], ["trim", "Trim colour"], ["primary", "Main colour"]]
+const LOOK_KIT := [["handle", "lifting handle"], ["sink", "heat sink"], ["aerial", "aerial"], ["box", "junction box"]]
+
+func _set_look(key: String, value) -> void:
+	var body: Dictionary = (draft.body as Dictionary).duplicate()
+	var look: Dictionary = (body.look as Dictionary).duplicate() if body.get("look") is Dictionary else {}
+	if value == null or (value is String and value == ""): look.erase(key)
+	else: look[key] = value
+	if look.is_empty(): body.erase("look")
+	else: body.look = look
+	_set_draft("body", body)
+	_refresh(true, ["chassis"])
+
+func _look_field(label: String, key: String, options: Array) -> Control:
+	var look: Dictionary = draft.body.look if draft.body.get("look") is Dictionary else {}
+	var all := [LOOK_AUTO]
+	all.append_array(options)
+	return UI.vbox(2, [UI.label(label, {"kind": "cond", "size": 13, "weight": 600, "color": UI.DIM}),
+		_select(all, str(look.get(key, "")), func(v): _set_look(key, v))])
+
+func _build_html(extras: Dictionary) -> void:
+	_body.sub("Build")
+	if not Dress.on:
+		_body.p("Robot hardware is switched off in Settings, so none of this shows.", {"tone": "muted", "size": 12})
+		return
+	var look: Dictionary = draft.body.look if draft.body.get("look") is Dictionary else {}
+	var mats := LOOK_MATS.slice(1)
+	_body.row([_look_field("Frame", "frame", [["rails", "Machined rails"], ["tube", "Tube"], ["none", "None"]]), _look_field("made of", "frameMat", mats)], 12)
+	if not extras.has("wheelGuards"):
+		_body.row([_look_field("Side armour", "skirts", [["plate", "Plates"], ["bar", "Tube rails"], ["none", "None"]]), _look_field("made of", "skirtMat", mats)], 12)
+	if extras.has("forks"):
+		_body.row([_look_field("Forks", "forks", [["blade", "Blades"], ["twin", "Twin blades"], ["saw", "Saw-backed"], ["shoe", "Wedgelets"]]), _look_field("made of", "forkMat", mats)], 12)
+	# What the weapon is, as it is drawn.
+	var def := _def()
+	var wv = null
+	if Build.can_assemble(reg, def): wv = J.path(Shape.build_shape(Build.assemble_robot(reg, def)), ["weapon", "visual"])
+	if wv is Dictionary and wv.get("kind") == "rotor" and wv.get("style") != "shell":
+		var style := str(wv.get("style"))
+		if style == "disc": _body.row([_look_field("Disc", "disc", [["holes", "Lightening holes"], ["spokes", "Spoked"], ["cam", "Single tooth"], ["saw", "Saw ring"], ["plain", "Solid"]])], 12)
+		elif style == "drum": _body.row([_look_field("Drum", "drum", [["teeth", "Teeth"], ["bars", "Impactor bars"], ["discs", "Stacked discs"]]),
+			_look_field("made of", "drumMat", [["steel", "Bare steel"], ["brass", "Brass"], ["copper", "Copper"], ["dark", "Black"], ["anod", "Anodised"]])], 12)
+		elif style == "bar" and wv.get("axis") == "y": _body.row([_look_field("Bar", "bar", [["hook", "Hooked"], ["slab", "Slab"], ["taper", "Tapered"]])], 12)
+		if wv.get("axis") == "z":
+			_body.row([_look_field("Weapon drive", "drive", [["deck", "Motor on the deck"], ["inboard", "Motor inside"], ["none", "Hidden"]]),
+				_look_field("Belts", "belts", [["1", "One"], ["2", "Two"]])], 12)
+		else:
+			_body.row([_look_field("Weapon drive", "drive", [["can", "Motor on the hub"], ["engine", "Engine"], ["none", "Hidden"]])], 12)
+		_body.row([_look_field("Weapon carriers", "supports", [["truss", "Truss-cut"], ["plate", "Plate"], ["solid", "Solid"]]), _look_field("made of", "supportMat", mats)], 12)
+	elif wv is Dictionary and wv.get("kind") == "arm":
+		_body.row([_look_field("Pivot tower", "supportMat", mats)], 12)
+	# The colour of anodised parts and motor cans.
+	var cp := ColorPickerButton.new()
+	cp.color = CanvasRec.css(str(look.get("anod", J.g(draft.get("livery") if draft.get("livery") is Dictionary else {}, "accent", "#f0c419"))))
+	cp.edit_alpha = false
+	cp.custom_minimum_size = Vector2(64, 30)
+	cp.popup_closed.connect(func(): _set_look("anod", "#" + cp.color.to_html(false)))
+	var auto := UI.button("AUTO", "ghost", {"size": 11})
+	auto.tooltip_text = "Use the accent colour"
+	auto.disabled = not look.has("anod")
+	auto.pressed.connect(func(): _set_look("anod", null))
+	_body.row([UI.vbox(2, [UI.label("Anodising and motor cans", {"kind": "cond", "size": 13, "weight": 600, "color": UI.DIM}), cp]), auto], 12)
+	# What is bolted to the deck.
+	var kit = look.get("kit")
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	for k in LOOK_KIT:
+		var cb := CheckBox.new()
+		cb.text = k[1]
+		cb.button_pressed = kit is Array and (kit as Array).has(k[0])
+		cb.focus_mode = Control.FOCUS_NONE
+		cb.add_theme_font_override("font", UI.font("cond", 500))
+		cb.toggled.connect(func(on: bool):
+			var now: Array = (kit as Array).filter(func(x): return x != k[0]) if kit is Array else []
+			if on: now.append(k[0])
+			_set_look("kit", now))
+		flow.add_child(cb)
+	_body.add(flow)
+	_body.p("On the deck. Until you tick one, the builder picks a couple for you. All of this is looks only - it changes nothing in a fight." if not (kit is Array) else "On the deck. All of this is looks only - it changes nothing in a fight.", {"tone": "muted", "size": 12})
+
 func _set_livery(key: String, value) -> void:
 	var lv: Dictionary = (draft.get("livery", {}) as Dictionary).duplicate() if draft.get("livery") is Dictionary else {}
 	if value == null: lv.erase(key)
@@ -683,6 +783,7 @@ func _paint_html() -> void:
 		ex.add_child(cb)
 	_body.add(ex)
 	_body.p("Forks and a plow are real: a horizontal spinner that hits them glances off.", {"tone": "muted", "size": 12})
+	_build_html(extras)
 	_body.sub("Paint")
 	var colors := UI.hbox(14)
 	for spec in [["Main", "primary", "#b8babf"], ["Trim", "secondary", "#202227"], ["Accent", "accent", "#f0c419"]]:

@@ -28,7 +28,10 @@
         "count": 2,
         "lengthIn": 5
       }
-    ]
+    ],
+    "look": {
+      "skirts": "plate"
+    }
   },
   "build": {
     "chassis": "chassis_slab_ti",

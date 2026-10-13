@@ -30,7 +30,17 @@
         "count": 2,
         "lengthIn": 7
       }
-    ]
+    ],
+    "look": {
+      "forks": "blade",
+      "forkMat": "dark",
+      "frame": "rails",
+      "frameMat": "accent",
+      "skirts": "bar",
+      "supports": "truss",
+      "supportMat": "dark",
+      "drive": "deck"
+    }
   },
   "build": {
     "chassis": "chassis_long",

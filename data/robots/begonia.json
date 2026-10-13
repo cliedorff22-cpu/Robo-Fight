@@ -28,7 +28,10 @@
         "type": "eyes",
         "radiusIn": 1.8
       }
-    ]
+    ],
+    "look": {
+      "skirts": "none"
+    }
   },
   "build": {
     "chassis": "chassis_round",

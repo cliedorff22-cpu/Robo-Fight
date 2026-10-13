@@ -28,7 +28,16 @@
         "type": "tail",
         "heightIn": 14
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "hub",
+      "skirts": "none",
+      "supportMat": "accent",
+      "kit": [
+        "handle"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

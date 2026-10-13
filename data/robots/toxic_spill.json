@@ -29,7 +29,10 @@
         "type": "fin",
         "heightIn": 2
       }
-    ]
+    ],
+    "look": {
+      "skirts": "plate"
+    }
   },
   "build": {
     "chassis": "chassis_mid_steel",

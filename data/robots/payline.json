@@ -24,7 +24,19 @@
       "height": 1
     },
     "mount": "low",
-    "extras": []
+    "extras": [],
+    "look": {
+      "bar": "hook",
+      "frame": "rails",
+      "frameMat": "accent",
+      "skirts": "plate",
+      "skirtMat": "accent",
+      "supports": "plate",
+      "supportMat": "dark",
+      "kit": [
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_wide",

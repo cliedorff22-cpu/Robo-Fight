@@ -35,7 +35,16 @@
         "type": "tail",
         "heightIn": 8
       }
-    ]
+    ],
+    "look": {
+      "frame": "rails",
+      "frameMat": "dark",
+      "skirts": "plate",
+      "dome": "steel",
+      "kit": [
+        "sink"
+      ]
+    }
   },
   "build": {
     "chassis": "chassis_tall_box",

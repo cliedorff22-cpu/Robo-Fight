@@ -46,7 +46,7 @@ var bot_id := ""
 
 var _shape_keys := []          # shape index -> fitting key
 var _shape_slots := []         # shape index -> shape slot (a wedge, a fork, armour...)
-var _powered := {}
+var _powered := {}      # wheel index -> its rank among the powered wheels
 var _spring_k := 0.0
 var _spring_c := 0.0
 var _drive_gain := 0.0
@@ -161,13 +161,13 @@ func _init(assembled_robot: Dictionary, spawn: Dictionary, rulebook: Dictionary,
 	# powered comes from the drive part.
 	var driven := int(stats.drivenWheels)
 	if driven >= wheels.size():
-		for i in wheels.size(): _powered[i] = true
+		for i in wheels.size(): _powered[i] = i
 	else:
 		# 4WD powers everything; 2WD powers the rear axle.
 		var n := 0
 		for i in wheels.size():
 			if wheels[i].axle == "rear" and n < driven:
-				_powered[i] = true
+				_powered[i] = n
 				n += 1
 	# Spring rate sized so the preload exactly carries the bot's weight.
 	var rates := WheelModel.suspension_rates(_mass, wheels.size(), _rest_length, WheelModel.SUSPENSION_PRELOAD, DAMPING_RATIO, Phys.GRAVITY)
@@ -415,7 +415,7 @@ func step(input: Dictionary, dt: float) -> void:
 			grip, lat_frac, mix.x if wheels[i].side == "left" else mix.y,
 			# Wheels are lost as the set is destroyed, so a battered bot loses
 			# drive on some corners entirely.
-			_powered.has(i) and i < driven, top_speed, force_per_wheel, _drive_gain, _lat_gain, brake)
+			int(_powered.get(i, 1 << 30)) < driven, top_speed, force_per_wheel, _drive_gain, _lat_gain, brake)
 
 		tele.grounded = true
 		tele.load = res.loadN

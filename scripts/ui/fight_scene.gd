@@ -46,6 +46,7 @@ var views := {}                # robot id -> RobotView
 
 var _req: Dictionary
 var _mode := "quick"
+var _match_seed := 0
 var _career = null             # the career's hand-off, or null
 var _tourney = null
 var _scout = null
@@ -152,6 +153,7 @@ func _build() -> void:
 	# One seed per session drives every roll: damage, debris, the judges,
 	# both AI drivers and which killsaws come up in the last minute.
 	var match_seed: int = int(_req.seed) & 0xffffffff if _req.get("seed") != null else (Time.get_ticks_usec() + int(Time.get_unix_time_from_system())) & 0xffff
+	_match_seed = match_seed
 	print("[match] seed %d" % match_seed)
 
 	# Where: a venue round the box and a hazard layout in it (data/arenas.json).
@@ -425,6 +427,8 @@ func _build_overlay() -> void:
 	resume.pressed.connect(func(): do_action("pause"))
 	var quit := UI.button(back.to_upper(), "ghost")
 	quit.pressed.connect(func(): do_action("menu"))
+	var restart := UI.button("RESTART FIGHT", "ghost")
+	restart.pressed.connect(func(): do_action("restart"))
 	var hand := UI.button("HAND OVER TO THE AI", "ghost")
 	hand.pressed.connect(func(): do_action("handover"))
 	var tap := UI.button("TAP OUT", "ghost")
@@ -432,7 +436,7 @@ func _build_overlay() -> void:
 		if fight.bout.phase == Match.PAUSED or fight.bout.phase == Match.LIVE:
 			do_action("pause")
 			fight.bout.tap_out(fight.red.id))
-	for b in [resume, hand, tap, quit]: buttons.add_child(b)
+	for b in [resume, restart, hand, tap, quit]: buttons.add_child(b)
 	var controls := PanelContainer.new()
 	controls.add_theme_stylebox_override("panel", UI.box(Color(1, 1, 1, 0.04), {"pad": [10, 8]}))
 	controls.add_child(UI.rich(Hud.controls_bbcode(_two_player), {"kind": "cond", "size": 14, "weight": 500, "color": UI.DIM}))
@@ -494,7 +498,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func do_action(action: String) -> void:
 	if not _ready_to_run: return
 	var bout := fight.bout
-	if _overlay_open and action != "pause" and action != "menu" and action != "handover" and action != "sound": return
+	if _overlay_open and action != "pause" and action != "menu" and action != "handover" and action != "sound" and action != "restart": return
 	match action:
 		"start":
 			if _mode == "career" and _reported:
@@ -526,6 +530,17 @@ func do_action(action: String) -> void:
 			# Back to the menu, which remembers the matchup.
 			fight.set_frozen(false)
 			Game.to_menu("career" if (_mode == "career" or _mode == "scout") else ("tournament" if _mode == "tourney" else "quick"))
+		"restart":
+			# The same fight again from the countdown: same robots, same
+			# damage carried in, same seed. Once a career or tournament
+			# result has been reported it is on the record and cannot be re-run.
+			if _reported and (_mode == "career" or _mode == "tourney"):
+				hud.banner("THAT RESULT IS ON THE RECORD", 2.0)
+				return
+			var again := _req.duplicate()
+			again.seed = _match_seed
+			fight.set_frozen(false)
+			Game.start_fight(again)
 		"cam_next": cam.next_cam()
 		"cam_prev": cam.prev_cam()
 		"handover": fight.pilot.toggle(fight.red.id)

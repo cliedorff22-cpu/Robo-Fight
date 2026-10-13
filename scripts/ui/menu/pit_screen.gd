@@ -1,9 +1,9 @@
 ## pit_screen.gd - the pit: between fights, choose what to fix.
 ##
-## After every fight the robot comes back with whatever it took. The crew has
-## the pit window (minutes until the next fight) times its size in
-## crew-minutes; each damaged part can be left, patched, repaired or replaced,
-## each with a price and a time. What is not fixed goes into the next fight -
+## After every fight the robot comes back with whatever it took. There is no
+## clock: each damaged part can be left, patched, repaired or replaced, each
+## with a price, and only cash limits what gets done. What is not fixed goes
+## into the next fight -
 ## the panel on the left shows what the robot will be able to do. The rules
 ## are logic/pit.gd and career.gd; this only shows them.
 class_name PitScreen
@@ -38,11 +38,8 @@ func _render() -> void:
 	var damaged: Array = (st.report as Array).filter(func(r): return J.truthy(r.get("damaged")))
 	var nf = null if J.truthy(c.get("seasonOver")) else Career.next_fight(reg, c)
 	var g := Garage.garage_of(reg, c)
-	var cfg := Career.crew_config(reg)
-	var n := Career.crew_size(reg, c)
-	var fee: float = cfg.hireFee[mini(cfg.hireFee.size() - 1, n - int(cfg.base))]
 	add_child(cs.menu.bar("The pit", "", "CAREER", "career", [
-		UI.label(("%s minutes until %s · crew of %d" % [J.s(st.window), "the next fight" if nf != null else "you are called", n]).to_upper(),
+		UI.label(("Fix what you can pay for before %s" % ("the next fight" if nf != null else "you are called")).to_upper(),
 			{"kind": "cond", "size": 13, "weight": 500, "ls": 0.1, "color": UI.DIM}),
 		UI.label(money(c.cash), {"kind": "mono", "size": 16, "weight": 700, "color": UI.ACCENT})]))
 
@@ -72,23 +69,6 @@ func _render() -> void:
 		for h in ["PART", "CONDITION", "WORK"]: grid.add_child(UI.label(h, head))
 		for r in damaged: _row(grid, r)
 		rd.add(grid)
-	rd.gap(8)
-	rd.p("[b]Pit crew: %d[/b]  %s" % [n, Doc.muted("(%s free%s)" % [J.s(cfg.base), ", %d on %s a season each" % [n - int(cfg.base), money(cfg.salaryPerSeason)] if n > cfg.base else ""])])
-	rd.p("Each crew member adds %s crew-minutes to every pit stop." % J.s(st.window), {"tone": "muted", "size": 12})
-	var hire := UI.button("CREW IS FULL" if n >= cfg.max else "HIRE ONE (%s + %s/SEASON)" % [money(fee), money(cfg.salaryPerSeason)], "ghost", {"size": 11})
-	hire.disabled = n >= cfg.max
-	hire.pressed.connect(func():
-		var r := Career.hire_crew(reg, cs.career)
-		note = "Signed a crew member for %s." % money(r.fee) if J.truthy(r.get("ok")) else str(J.g(r, "reason", ""))
-		cs.save()
-		_render())
-	var release := UI.button("LET ONE GO", "ghost", {"size": 11})
-	release.disabled = n <= cfg.base
-	release.pressed.connect(func():
-		Career.release_crew(reg, cs.career)
-		cs.save()
-		_render())
-	rd.row([hire, release])
 	var right := Plate.new(16, 12)
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right.add_child(UI.scroll(rd))
@@ -97,14 +77,7 @@ func _render() -> void:
 	add_child(UI.margin(main, 18, 12, 18, 10))
 
 	# ---- foot: the time and the money, and the buttons.
-	var over: bool = q.minutes > st.crewMinutes
-	var meter := Meter.new(10, 260)
-	meter.ease_rate = 0.0
-	meter.set_colors(Color(Doc.NEG) if over else UI.OK, Color(Doc.NEG) if over else UI.ACCENT)
-	meter.value = minf(1.0, q.minutes / maxf(1.0, st.crewMinutes))
-	meter.size_flags_horizontal = Control.SIZE_FILL
 	var foot := UI.hbox(16, [
-		UI.vbox(2, [meter, UI.label("%s / %s crew-min" % [J.s(q.minutes), J.s(st.crewMinutes)], {"kind": "mono", "size": 13, "weight": 700})]),
 		Doc.text("Work %s%s · [b]net %s[/b]" % [money(q.cost), " · salvage +%s" % money(q.salvage) if J.truthy(q.get("salvage")) else "", money(q.net)], {"kind": "mono", "size": 14, "bold_kind": "mono", "wrap": false}),
 	])
 	foot.add_child(UI.spacer(0, 0, true))
@@ -161,8 +134,8 @@ func _row(grid: GridContainer, r: Dictionary) -> void:
 		var o = {"cost": 0.0, "minutes": 0.0} if how == "" else (r.options as Dictionary).get(how)
 		if o == null: continue
 		var sub_text := "fight with it"
-		if how == "replace": sub_text = "%s · %sm" % ["spare" if J.truthy(o.get("spare")) else money(o.cost), J.s(o.minutes)]
-		elif how != "": sub_text = "%s · %sm" % [money(o.cost), J.s(o.minutes)]
+		if how == "replace": sub_text = "spare" if J.truthy(o.get("spare")) else money(o.cost)
+		elif how != "": sub_text = money(o.cost)
 		var b := UI.button("", "choice")
 		b.custom_minimum_size = Vector2(104, 44)
 		var v := UI.vbox(-3, [UI.label(str(h[1]).to_upper(), {"kind": "cond", "size": 14, "weight": 700, "ls": 0.06}), UI.label(sub_text, {"kind": "body", "size": 11, "weight": 400, "color": UI.DIM})])

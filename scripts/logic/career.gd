@@ -685,7 +685,7 @@ static func pit_state(reg: Registry, career: Dictionary) -> Dictionary:
 			o.key = u.prefix + r.key
 			o.unit = u.name if u.prefix != "" else null
 			report.append(o)
-	return {"open": career.get("pit") != null, "window": window, "crew": crew, "crewMinutes": window * crew, "assembled": units[0].a, "units": units, "report": report}
+	return {"open": career.get("pit") != null, "window": window, "crew": crew, "crewMinutes": INF, "assembled": units[0].a, "units": units, "report": report}
 
 ## The player's units with their damage: [{ prefix, a, name }] (one, or two for a multibot).
 static func _player_units(reg: Registry, career: Dictionary) -> Array:
@@ -742,7 +742,6 @@ static func pit_quote(reg: Registry, career: Dictionary, plan: Dictionary) -> Di
 	var st := pit_state(reg, career)
 	var t := _unit_totals(reg, career, plan)
 	var problems := []
-	if t.minutes > st.crewMinutes: problems.append("That is %s crew-minutes of work; your crew of %d has %s before the next fight." % [J.num(t.minutes), st.crew, J.num(st.crewMinutes)])
 	if t.cost > career.cash: problems.append("That costs $%s; you have $%s." % [J.commas(t.cost), J.commas(J.rnd(career.cash))])
 	t.crewMinutes = st.crewMinutes
 	t.problems = problems
@@ -804,8 +803,6 @@ static func _offseason_rebuild(reg: Registry, career: Dictionary) -> void:
 	g.partnerCondition = {}
 	career.wear = {}
 	career.pit = null
-	var extra: int = crew_size(reg, career) - int(crew_config(reg).base)
-	if extra > 0: Ledger.pay(career, -extra * crew_config(reg).salaryPerSeason, "Pit crew salaries (%d)" % extra)
 
 # ---------------------------------------------------------------- retirement
 

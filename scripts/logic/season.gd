@@ -53,7 +53,9 @@ static func make_season(format: Dictionary, o: Dictionary) -> Dictionary:
 			var members := _by_rating(_members_of(membership, lg), ratings)
 			var drawn := _draw_groups(members, int(f.groups), rng)
 			var groups := []
-			for g in drawn.size(): groups.append({"name": GROUP_NAMES[g], "ids": drawn[g]})
+			# The order inside a group sets who meets whom in which round: mix
+			# it, or the pot a robot sits in would fix its opponents' order.
+			for g in drawn.size(): groups.append({"name": GROUP_NAMES[g], "ids": rng.shuffle(drawn[g])})
 			season.leagues[lg] = {"members": members, "groups": groups, "finals": null, "ranking": null, "movement": null}
 			for grp in groups:
 				var rounds := Tournament.round_robin(grp.ids)
@@ -88,7 +90,10 @@ static func make_season(format: Dictionary, o: Dictionary) -> Dictionary:
 	season.totalRounds = season.groupRounds + season.finalsRounds
 	return season
 
-## Deal ranked robots into groups by pots: one from each pot of `n`, in a random order.
+## Deal ranked robots into groups by pots: one from each pot of `n`, in a random
+## order. Then a robot of each pot trades places with one of the next pot down
+## in another group, now and then, so the same pots do not make the same groups
+## every season (ratings barely move, so the pots hardly change).
 static func _draw_groups(ranked: Array, n: int, rng: Rng) -> Array:
 	var groups := []
 	for i in n: groups.append([])
@@ -97,6 +102,16 @@ static func _draw_groups(ranked: Array, n: int, rng: Rng) -> Array:
 		var pot := rng.shuffle(ranked.slice(p, p + n))
 		for i in pot.size(): groups[i % n].append(pot[i])
 		p += n
+	for k in range(n - 1):
+		if rng.next() < 0.6:
+			var a: int = int(floor(rng.next() * n))
+			var b: int = int(floor(rng.next() * (n - 1)))
+			if b >= a: b += 1
+			var ai: int = mini(k, (groups[a] as Array).size() - 1)
+			var bi: int = mini(k + 1, (groups[b] as Array).size() - 1)
+			var t = groups[a][ai]
+			groups[a][ai] = groups[b][bi]
+			groups[b][bi] = t
 	return groups
 
 ## Is this round in the group stage?

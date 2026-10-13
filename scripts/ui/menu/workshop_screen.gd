@@ -679,7 +679,9 @@ func _build_html(extras: Dictionary) -> void:
 	cp.color = CanvasRec.css(str(look.get("anod", J.g(draft.get("livery") if draft.get("livery") is Dictionary else {}, "accent", "#f0c419"))))
 	cp.edit_alpha = false
 	cp.custom_minimum_size = Vector2(64, 30)
-	cp.popup_closed.connect(func(): _set_look("anod", "#" + cp.color.to_html(false)))
+	# Deferred: _set_look redraws this tab, and the picker must not leave the
+	# tree while the engine is still closing its popup (that crashes Godot).
+	cp.popup_closed.connect(func(): _set_look.call_deferred("anod", "#" + cp.color.to_html(false)))
 	var auto := UI.button("AUTO", "ghost", {"size": 11})
 	auto.tooltip_text = "Use the accent colour"
 	auto.disabled = not look.has("anod")
